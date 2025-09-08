@@ -1,0 +1,4 @@
+app/.env
+cdi/.env
+geonode/.env
+traefik/.env
