@@ -93,7 +93,7 @@ jobs:
 
         # South latitude
         expect "South latitude*"
-        send "-10.0\r"
+        send -- "-10.0\r"
 
         # West longitude
         expect "West longitude*"
