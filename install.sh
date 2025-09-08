@@ -79,28 +79,28 @@ TWG_LIST=$(read_with_default "   Enter organizations" "Indonesia University, BMK
 echo
 echo "3. Your Country Boundaries:"
 while true; do
-    NORTH_LAT=$(read_with_default "   3.1 North latitude" "8.290")
+    NORTH_LAT=$(read_with_default "   3.1 North latitude" "8.375")
     if validate_latitude "$NORTH_LAT"; then
         break
     fi
 done
 
 while true; do
-    SOUTH_LAT=$(read_with_default "   3.2 South latitude" "-12.250")
+    SOUTH_LAT=$(read_with_default "   3.2 South latitude" "-12.275")
     if validate_latitude "$SOUTH_LAT"; then
         break
     fi
 done
 
 while true; do
-    WEST_LON=$(read_with_default "   3.3 West longitude" "94.100")
+    WEST_LON=$(read_with_default "   3.3 West longitude" "94.175")
     if validate_longitude "$WEST_LON"; then
         break
     fi
 done
 
 while true; do
-    EAST_LON=$(read_with_default "   3.4 East longitude" "141.340")
+    EAST_LON=$(read_with_default "   3.4 East longitude" "141.375")
     if validate_longitude "$EAST_LON"; then
         break
     fi
@@ -131,6 +131,46 @@ while true; do
     GEONODE_DOMAIN=$(read_with_default "   6.2 Geonode Domain" "http://localhost")
     if validate_url "$GEONODE_DOMAIN"; then
         break
+    fi
+done
+
+# 7. Service selection
+echo
+echo "7. Which services would you like to run? Choose by number 1-4 (default 1):"
+echo "   1. All services"
+echo "   2. Drought-Map Hub only"
+echo "   3. CDI-Script only"
+echo "   4. Geonode only"
+while true; do
+    SERVICE_CHOICE=$(read_with_default "   Enter your choice (1-4)" "1")
+    if [[ "$SERVICE_CHOICE" =~ ^[1-4]$ ]]; then
+        case $SERVICE_CHOICE in
+            1) SERVICE_PARAM="all" ;;
+            2) SERVICE_PARAM="app" ;;
+            3) SERVICE_PARAM="cdi" ;;
+            4) SERVICE_PARAM="geonode" ;;
+        esac
+        break
+    else
+        echo "Invalid choice. Please enter a number between 1 and 4."
+    fi
+done
+
+# 8. Mode selection
+echo
+echo "8. Would you like to run in development or production mode? Choose by number 1-2 (default 1):"
+echo "   1. Development mode"
+echo "   2. Production mode"
+while true; do
+    MODE_CHOICE=$(read_with_default "   Enter your choice (1-2)" "1")
+    if [[ "$MODE_CHOICE" =~ ^[1-2]$ ]]; then
+        case $MODE_CHOICE in
+            1) MODE_PARAM="dev" ;;
+            2) MODE_PARAM="prod" ;;
+        esac
+        break
+    else
+        echo "Invalid choice. Please enter 1 or 2."
     fi
 done
 
@@ -261,3 +301,19 @@ echo "  4. Make sure your TopoJSON file is at app/source/country.topojson"
 echo "  5. Run your application using the appropriate startup script"
 echo
 echo "Note: Backup files were created for any existing configuration files."
+echo
+
+# Execute run.sh based on user choices
+echo "========================================"
+echo "  Starting Services...                  "
+echo "========================================"
+echo "Selected service: $SERVICE_PARAM"
+echo "Selected mode: $MODE_PARAM"
+echo
+
+# Make run.sh executable if it isn't already
+chmod +x ./run.sh
+
+# Execute the run script
+echo "Executing: ./run.sh mode=$MODE_PARAM service=$SERVICE_PARAM"
+./run.sh mode=$MODE_PARAM service=$SERVICE_PARAM
