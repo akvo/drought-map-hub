@@ -1,0 +1,198 @@
+name: Test Installation and Runner Scripts
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test-scripts:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        mode: [dev, prod]
+        service: [all, app, cdi, geonode]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Install required tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc expect
+
+    - name: Make scripts executable
+      run: |
+        chmod +x install.sh
+        chmod +x run.sh
+
+    - name: Test run.sh dry-run mode
+      run: |
+        echo "Testing run.sh with mode=${{ matrix.mode }} service=${{ matrix.service }}"
+        ./run.sh mode=${{ matrix.mode }} service=${{ matrix.service }} --dry-run
+
+    - name: Test run.sh help
+      run: |
+        ./run.sh --help || true
+        ./run.sh -h || true
+
+    - name: Validate script syntax
+      run: |
+        bash -n install.sh
+        bash -n run.sh
+
+  test-install-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install required tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc expect
+
+    - name: Make scripts executable
+      run: |
+        chmod +x install.sh
+        chmod +x run.sh
+
+    - name: Create test TopoJSON file
+      run: |
+        mkdir -p /tmp/test
+        echo '{"type":"Topology","objects":{"test":{"type":"GeometryCollection","geometries":[]}}}' > /tmp/test/country.topojson
+
+    - name: Test install.sh with automated inputs
+      run: |
+        # Create expect script to automate install.sh interaction
+        cat > test_install.exp << 'EOF'
+        #!/usr/bin/expect -f
+        set timeout 30
+
+        spawn ./install.sh
+
+        # Country name
+        expect "Your Country*"
+        send "TestCountry\r"
+
+        # TWG List
+        expect "Enter organizations*"
+        send "Test Org 1, Test Org 2\r"
+
+        # North latitude
+        expect "North latitude*"
+        send "10.0\r"
+
+        # South latitude
+        expect "South latitude*"
+        send "-10.0\r"
+
+        # West longitude
+        expect "West longitude*"
+        send "90.0\r"
+
+        # East longitude
+        expect "East longitude*"
+        send "140.0\r"
+
+        # TopoJSON path
+        expect "Path to your country's TopoJSON file*"
+        send "/tmp/test/country.topojson\r"
+
+        # Earth data username
+        expect "Username*"
+        send "testuser\r"
+
+        # Earth data password
+        expect "Password*"
+        send "testpass\r"
+
+        # Drought hub domain
+        expect "Drought-map Hub Domain*"
+        send "http://test.example.com\r"
+
+        # Geonode domain
+        expect "Geonode Domain*"
+        send "http://geonode.test.com\r"
+
+        # Service selection
+        expect "Which services would you like to run*"
+        send "1\r"
+
+        # Mode selection
+        expect "Would you like to run in development or production mode*"
+        send "1\r"
+
+        expect eof
+        EOF
+
+        chmod +x test_install.exp
+        ./test_install.exp
+
+    - name: Verify generated files
+      run: |
+        # Check if .env files were created
+        test -f app/.env || (echo "app/.env not created" && exit 1)
+        test -f cdi/.env || (echo "cdi/.env not created" && exit 1)
+        test -f geonode/.env || (echo "geonode/.env not created" && exit 1)
+        test -f traefik/.env || (echo "traefik/.env not created" && exit 1)
+        test -f cdi/config/cdi_project_settings.json || (echo "cdi_project_settings.json not created" && exit 1)
+
+        # Verify content in generated files
+        grep -q "TestCountry" app/.env || (echo "Country name not found in app/.env" && exit 1)
+        grep -q "testuser" cdi/.env || (echo "Earth data username not found in cdi/.env" && exit 1)
+        grep -q "http://test.example.com" traefik/.env || (echo "Domain not found in traefik/.env" && exit 1)
+        grep -q '"region_name": "TestCountry"' cdi/config/cdi_project_settings.json || (echo "Region name not found in cdi config" && exit 1)
+
+        echo "All configuration files generated successfully!"
+
+    - name: Display generated configurations (for debugging)
+      run: |
+        echo "=== app/.env ==="
+        cat app/.env
+        echo -e "\n=== cdi/.env ==="
+        cat cdi/.env
+        echo -e "\n=== traefik/.env ==="
+        cat traefik/.env
+        echo -e "\n=== cdi/config/cdi_project_settings.json ==="
+        cat cdi/config/cdi_project_settings.json
+
+  test-error-handling:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Make scripts executable
+      run: |
+        chmod +x install.sh
+        chmod +x run.sh
+
+    - name: Test run.sh with invalid arguments
+      run: |
+        # Test invalid mode
+        ./run.sh mode=invalid service=all --dry-run && exit 1 || echo "Correctly rejected invalid mode"
+
+        # Test invalid service
+        ./run.sh mode=dev service=invalid --dry-run && exit 1 || echo "Correctly rejected invalid service"
+
+        # Test missing arguments
+        ./run.sh mode=dev --dry-run && exit 1 || echo "Correctly rejected missing service"
+        ./run.sh service=all --dry-run && exit 1 || echo "Correctly rejected missing mode"
+
+    - name: Test run.sh with valid arguments
+      run: |
+        # These should succeed
+        ./run.sh mode=dev service=all --dry-run
+        ./run.sh mode=prod service=app --dry-run
+        ./run.sh mode=dev service=cdi --dry-run
+        ./run.sh mode=prod service=geonode --dry-run
