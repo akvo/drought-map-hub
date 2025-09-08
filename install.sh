@@ -68,39 +68,39 @@ echo "Please provide the following information to configure your Drought Map Hub
 echo
 
 # 1. Country Name
-COUNTRY_NAME=$(read_with_default "1. Your Country" "Indonesia")
+COUNTRY_NAME=$(read_with_default "1. Your Country" "Eswatini")
 
 # 2. Technical Working Group
 echo
 echo "2. Technical Working Group (separate with comma)"
-TWG_LIST=$(read_with_default "   Enter organizations" "Indonesia University, BMKG, BNPB")
+TWG_LIST=$(read_with_default "   Enter organizations" "NDMA, MoAg, MET, DWA, UNESWA (University of Eswatini)")
 
 # 3. Country Boundaries
 echo
 echo "3. Your Country Boundaries:"
 while true; do
-    NORTH_LAT=$(read_with_default "   3.1 North latitude" "8.375")
+    NORTH_LAT=$(read_with_default "   3.1 North latitude" "-25.675")
     if validate_latitude "$NORTH_LAT"; then
         break
     fi
 done
 
 while true; do
-    SOUTH_LAT=$(read_with_default "   3.2 South latitude" "-12.275")
+    SOUTH_LAT=$(read_with_default "   3.2 South latitude" "-27.825")
     if validate_latitude "$SOUTH_LAT"; then
         break
     fi
 done
 
 while true; do
-    WEST_LON=$(read_with_default "   3.3 West longitude" "94.175")
+    WEST_LON=$(read_with_default "   3.3 West longitude" "30.675")
     if validate_longitude "$WEST_LON"; then
         break
     fi
 done
 
 while true; do
-    EAST_LON=$(read_with_default "   3.4 East longitude" "141.375")
+    EAST_LON=$(read_with_default "   3.4 East longitude" "32.825")
     if validate_longitude "$EAST_LON"; then
         break
     fi
