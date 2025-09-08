@@ -1,0 +1,17 @@
+{
+  "raw_data_dirs": {
+    "lst_hdf": "./source/input_data/MOD21C3_LST",
+    "ndvi_hdf": "./source/input_data/MOD13C2_NDVI",
+    "chirps_tif": "./source/input_data/CHIRPS",
+    "fldas_data": "./source/input_data/soil_moisture"
+  },
+  "hdf_groups": {
+    "lst": "MODIS_MONTHLY_CMG_LST",
+    "ndvi": "MOD_Grid_monthly_CMG_VI"
+  },
+  "scratch_dir": "./source/working_data",
+  "geotiff_dir": "./source/output_data/GeoTiffs",
+  "output_dir": "./source/output_data",
+  "map_sources_dir": "./source/mapping/data",
+  "map_export_dir": "./source/mapping/output/maps"
+}
