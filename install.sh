@@ -269,16 +269,16 @@ EOF
 # Handle TopoJSON file if provided
 if [ -n "$TOPOJSON_PATH" ]; then
     if [ -f "$TOPOJSON_PATH" ]; then
-        echo "Copying TopoJSON file to app/source/country.topojson..."
-        backup_file "app/source/country.topojson"
-        cp "$TOPOJSON_PATH" app/source/country.topojson
+        echo "Copying TopoJSON file to app/backend/source/country.topojson..."
+        backup_file "app/backend/source/country.topojson"
+        cp "$TOPOJSON_PATH" app/backend/source/country.topojson
         echo "TopoJSON file copied successfully."
     else
         echo "Warning: TopoJSON file not found at $TOPOJSON_PATH"
-        echo "Please manually copy your TopoJSON file to app/source/country.topojson"
+        echo "Please manually copy your TopoJSON file to app/backend/source/country.topojson"
     fi
 else
-    echo "No TopoJSON file provided. Please manually copy your TopoJSON file to app/source/country.topojson"
+    echo "No TopoJSON file provided. Please manually copy your TopoJSON file to app/backend/source/country.topojson"
 fi
 
 echo
@@ -297,7 +297,7 @@ echo "Next steps:"
 echo "  1. Review and update the generated .env files if needed"
 echo "  2. Update EMAIL settings in app/.env"
 echo "  3. Update GEONODE admin credentials in app/.env and cdi/.env"
-echo "  4. Make sure your TopoJSON file is at app/source/country.topojson"
+echo "  4. Make sure your TopoJSON file is at app/backend/source/country.topojson"
 echo "  5. Run your application using the appropriate startup script"
 echo
 echo "Note: Backup files were created for any existing configuration files."
