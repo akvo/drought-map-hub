@@ -2,3 +2,5 @@ app/.env
 cdi/.env
 geonode/.env
 traefik/.env
+.env.backup.*
+cdi_project_settings.json.backup.*
