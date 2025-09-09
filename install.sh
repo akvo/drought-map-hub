@@ -202,6 +202,32 @@ RUNDECK_API_TOKEN=secret
 CSRF_TRUSTED_ORIGINS="${DROUGHT_HUB_DOMAIN}"
 EOF
 
+# Generate strong password for Rundeck
+RUNDECK_PASSWORD=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-25)
+
+# Create app/rundeck.env
+echo "Creating app/rundeck.env..."
+backup_file "app/rundeck.env"
+cat > app/rundeck.env << EOF
+RUNDECK_GRAILS_URL=http://localhost:4440
+RD_URL=http://localhost:4440
+RD_USER=admin
+RD_PASSWORD=${RUNDECK_PASSWORD}
+RUNDECK_MAIL_SMTP_HOST=smtp.gmail.com
+RUNDECK_MAIL_SMTP_PORT=587
+RUNDECK_MAIL_SMTP_USERNAME=your-email@example.com
+RUNDECK_MAIL_SMTP_PASSWORD=your-email-password
+RUNDECK_MAIL_FROM=noreply@example.com
+EOF
+
+# Create app/rundeck/realm.properties
+echo "Creating app/rundeck/realm.properties..."
+backup_file "app/rundeck/realm.properties"
+cat > app/rundeck/realm.properties << EOF
+admin:${RUNDECK_PASSWORD},user,admin
+EOF
+
+
 # Create cdi/.env
 echo "Creating cdi/.env..."
 backup_file "cdi/.env"
