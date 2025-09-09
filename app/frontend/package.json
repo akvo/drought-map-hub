@@ -1,0 +1,52 @@
+{
+  "name": "drought_map_hub",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watchAll"
+  },
+  "dependencies": {
+    "@ant-design/nextjs-registry": "^1.0.2",
+    "@casl/ability": "^6.7.3",
+    "@casl/react": "^5.0.0",
+    "@tinymce/tinymce-react": "^5.1.1",
+    "antd": "^5.23.0",
+    "classnames": "^2.5.1",
+    "copy-webpack-plugin": "^12.0.2",
+    "dayjs": "^1.11.13",
+    "jose": "^5.9.6",
+    "leaflet": "^1.9.4",
+    "leaflet.pattern": "^0.1.0",
+    "next": "14.2.18",
+    "react": "^18",
+    "react-compare-slider": "^3.1.0",
+    "react-dom": "^18",
+    "react-leaflet": "^4.2.1",
+    "sass": "^1.81.0",
+    "sharp": "^0.33.5",
+    "tinymce": "^7.5.1",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.7",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
+    "util": "^0.12.5"
+  },
+  "resolutions": {
+    "wrap-ansi": "7.0.0",
+    "string-width": "4.2.3"
+  }
+}

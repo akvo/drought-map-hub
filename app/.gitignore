@@ -1,0 +1,11 @@
+.env
+/.pip
+/.mypy_cache
+__pycache__
+/tmp
+.coverage
+.coverage.*
+db.dbml
+**/app.env
+**/rundeck.env
+**/realm.properties

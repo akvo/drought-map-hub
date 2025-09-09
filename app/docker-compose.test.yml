@@ -1,0 +1,58 @@
+version: "3.9"
+services:
+  mainnetwork:
+    image: alpine:3.14
+    command: ["tail", "-f", "/dev/null"]
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - ./database/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - pg-data:/var/lib/postgresql/data
+      - ./database/script:/script:ro
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+      - 5432:5432
+  backend:
+    image: python:3.9
+    working_dir: /app/backend
+    command: ["./start.sh"]
+    volumes:
+      - ./:/app:delegated
+    environment:
+      - DB_SCHEMA=drought_map_hub
+      - DB_USER=akvo
+      - DB_PASSWORD=password
+      - DB_HOST=db
+      - DEBUG=True
+      - SECRET_KEY=secret
+      - GEONODE_BASE_URL
+      - GEONODE_ADMIN_USERNAME
+      - GEONODE_ADMIN_PASSWORD
+      - RUNDECK_API_URL
+      - RUNDECK_API_TOKEN
+      - COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN:-}
+      - EMAIL_HOST=smtp.example.com
+      - EMAIL_PORT=587
+      - EMAIL_USE_TLS=True
+      - EMAIL_HOST_USER=test@example.com
+      - EMAIL_HOST_PASSWORD=password
+      - EMAIL_FROM=test@example.com
+      - WEBDOMAIN=notset
+      - CSRF_TRUSTED_ORIGINS=https://example.com
+    depends_on:
+      - db
+  frontend:
+    image: akvo/akvo-node-18-alpine:20230831.105309.b9593b7
+    command: ["./start.sh"]
+    volumes:
+      - ./frontend:/app:delegated
+    working_dir: /app
+    environment:
+      - WEBDOMAIN=notset
+      - SESSION_SECRET=secret
+      - GEONODE_BASE_URL=http://localhost
+    depends_on:
+      - backend
+volumes:
+  pg-data:
