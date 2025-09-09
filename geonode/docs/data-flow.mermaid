@@ -1,0 +1,43 @@
+graph TD
+    A[Staff Uploads Data] -->|Upload to GeoNode| B[GeoNode]
+    B -->|Store Uploaded Data| C[PostgreSQL/PostGIS]
+    C -->|Manage Data| D[GeoNode Management]
+    D -->|List Uploaded Data| E[Admin Interface]
+    E -->|Select Dataset and Trigger CDI Script| F[CDI Script]
+    F -->|Process Data| G[Processed Data in PostgreSQL/PostGIS]
+    G -->|Update GeoNode| H[GeoNode API]
+    H -->|Fetch Processed Data| I[Custom API]
+    I -->|Serve Processed Data| J[Next.js Frontend]
+    J -->|Display Interactive Maps| K[User Interface]
+    K -->|Feedback and Interaction| D
+
+    subgraph Data Upload
+        A
+    end
+
+    subgraph Data Processing and Storage
+        B
+        C
+    end
+
+    subgraph Admin Interaction
+        E
+    end
+
+    subgraph Data Processing with CDI Script
+        F
+    end
+
+    subgraph Data Update and Access
+        G
+        H
+    end
+
+    subgraph Custom API
+        I
+    end
+
+    subgraph Data Visualization
+        J
+        K
+    end

@@ -1,0 +1,36 @@
+graph TD
+    subgraph Cron Job
+        A[Cron Job: Download Data from NASA]
+        B[CDI Script: Process Data]
+    end
+
+    subgraph GeoNode System
+        C[GeoNode]
+        D[PostgreSQL/PostGIS]
+        E[GeoNode Management]
+        C -->|Store Processed Data| D
+        D -->|Manage Data| E
+    end
+
+    subgraph Admin Interaction
+        F[Admin Interface]
+        F -->|Select Dataset| G[GeoNode Management]
+    end
+
+    subgraph Custom API System
+        H[GeoNode API]
+        I[Custom API]
+        G -->|Trigger API| H
+        H -->|Fetch Processed Data| I
+    end
+
+    subgraph Frontend System
+        J[Next.js Frontend]
+        K[User Interface]
+        I -->|Serve Processed Data| J
+        J -->|Display Interactive Maps| K
+    end
+
+    A -->|Process with CDI Script| B -->|Upload to GeoNode| C
+    E -->|List Processed Data| F
+    K -->|Feedback and Interaction| E
