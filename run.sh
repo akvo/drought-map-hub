@@ -108,11 +108,22 @@ run_service() {
         echo "Found compose file: $compose_file"
         
         if [[ "$mode" == "dev" ]]; then
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml up -d"
+            # Check if override file exists
+            local override_file="$service_dir/docker-compose.dev.override.yml"
+            if [[ -f "$override_file" ]]; then
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d"
+                else
+                    echo "Running: docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d"
+                    docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d
+                fi
             else
-                echo "Running: docker compose -f docker-compose.dev.yml up -d"
-                docker compose -f docker-compose.dev.yml up -d
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml up -d"
+                else
+                    echo "Running: docker compose -f docker-compose.dev.yml up -d"
+                    docker compose -f docker-compose.dev.yml up -d
+                fi
             fi
         else
             if [[ "$DRY_RUN" == "true" ]]; then
