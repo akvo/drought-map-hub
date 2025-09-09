@@ -1,0 +1,4 @@
+*
+!.gitignore
+!country.topojson
+!config
