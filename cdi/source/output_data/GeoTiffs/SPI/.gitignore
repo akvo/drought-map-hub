@@ -1,3 +1,0 @@
-# Ignore everything in maps/ except .gitignore
-*
-!.gitignore
