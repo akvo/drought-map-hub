@@ -1,0 +1,4 @@
+# Ignore everything in output/ except .gitignore and maps
+*
+!.gitignore
+!maps
