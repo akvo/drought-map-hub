@@ -1,10 +1,10 @@
 {
-  "region_name": "Indonesia",
+  "region_name": "Eswatini",
   "bounds": {
-    "n_lat": 8.375,
-    "s_lat": -12.275,
-    "w_lon": 94.175,
-    "e_lon": 141.375
+    "n_lat": -25.675,
+    "s_lat": -27.825,
+    "w_lon": 30.675,
+    "e_lon": 32.825
   },
   "spi_periods": [3],
   "cdi_parameters": {
