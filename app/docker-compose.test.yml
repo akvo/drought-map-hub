@@ -11,8 +11,12 @@ services:
       - ./database/script:/script:ro
     environment:
       - POSTGRES_PASSWORD=password
+      - DB_HOST=db
+      - DB_PASSWORD=password
+      - DB_SCHEMA=drought_map_hub
+      - DB_USER=akvo
     ports:
-      - 5432:5432
+      - "5433:5432"
   backend:
     image: python:3.9
     working_dir: /app/backend
