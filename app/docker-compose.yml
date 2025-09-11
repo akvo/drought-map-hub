@@ -14,7 +14,6 @@ services:
     volumes:
       - ./database/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
       - pg-data:/var/lib/postgresql/data
-      # - ./database/script:/script:ro
     environment:
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
       - DB_HOST=$DB_HOST
@@ -76,17 +75,17 @@ services:
     volumes:
       - ./backend:/app:delegated
     environment:
-      - DB_SCHEMA=drought_map_hub
-      - DB_USER=akvo
-      - DB_PASSWORD=password
-      - DB_HOST=db
-      - DEBUG=True
-      - SECRET_KEY=secret
-      - GEONODE_BASE_URL
-      - GEONODE_ADMIN_USERNAME
-      - GEONODE_ADMIN_PASSWORD
-      - RUNDECK_API_URL
-      - RUNDECK_API_TOKEN
+      - DB_SCHEMA=$DB_SCHEMA
+      - DB_USER=$DB_USER
+      - DB_PASSWORD=$DB_PASSWORD
+      - DB_HOST=$DB_HOST
+      - DEBUG=$DEBUG
+      - SECRET_KEY=$SECRET_KEY
+      - GEONODE_BASE_URL=$GEONODE_BASE_URL
+      - GEONODE_ADMIN_USERNAME=$GEONODE_ADMIN_USERNAME
+      - GEONODE_ADMIN_PASSWORD=$GEONODE_ADMIN_PASSWORD
+      - RUNDECK_API_URL=$RUNDECK_API_URL
+      - RUNDECK_API_TOKEN=$RUNDECK_API_TOKEN
       - EMAIL_HOST=$EMAIL_HOST
       - EMAIL_PORT=$EMAIL_PORT
       - EMAIL_USE_TLS=$EMAIL_USE_TLS
@@ -94,7 +93,7 @@ services:
       - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
-      - CSRF_TRUSTED_ORIGINS
+      - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
     depends_on:
       - backend
       - rundeck
