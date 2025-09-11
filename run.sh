@@ -19,12 +19,14 @@ usage() {
     echo ""
     echo "Parameters:"
     echo "  mode=dev|prod    - Development or production mode"
+    echo "                     Note: Traefik reverse proxy is only used in production mode"
     echo "  service=all|geonode|app|cdi - Which service to run"
     echo "  down             - Stop all running services"
     echo "  --dry-run        - Show what would be executed without running"
     echo ""
     echo "Examples:"
-    echo "  $0 mode=dev service=all"
+    echo "  $0 mode=dev service=all      # Development mode with direct port access"
+    echo "  $0 mode=prod service=all     # Production mode with Traefik reverse proxy"
     echo "  $0 mode=prod service=app --dry-run"
     echo "  $0 mode=dev service=cdi"
     echo "  $0 down"
@@ -329,8 +331,12 @@ stop_all_services() {
         stop_service "$service"
     done
     
-    # Stop traefik last
-    stop_traefik
+    # Stop traefik if it's running (check if container exists)
+    if docker ps -a --format "table {{.Names}}" | grep -q "traefik" 2>/dev/null || [[ "$DRY_RUN" == "true" ]]; then
+        stop_traefik
+    else
+        echo "Traefik container not found, skipping..."
+    fi
 }
 
 # Main execution
@@ -379,8 +385,10 @@ else
     # Create network if it doesn't exist
     create_network
 
-    # Always start traefik first (if it exists)
-    run_traefik "$MODE"
+    # Start traefik only in production mode
+    if [[ "$MODE" == "prod" ]]; then
+        run_traefik "$MODE"
+    fi
 
     # Run services based on the service parameter
     if [[ "$SERVICE" == "all" ]]; then
