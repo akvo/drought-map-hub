@@ -1,0 +1,20 @@
+version: "3.8"
+services:
+  cdi:
+    build:
+      context: ./src/cdi-scripts
+      dockerfile: Dockerfile
+    image: cdi-scripts:latest
+    container_name: cdi
+    volumes:
+      - input_data:/app/input_data
+      - output_data:/app/output_data
+      - ./config/cdi_project_settings.json:/app/cdi_project_settings.conf
+    working_dir: /app
+    # Don't run the script immediately; let user exec into container
+    command: ["sleep", "infinity"]
+
+# In Production, use named volumes to persist data
+volumes:
+  input_data:
+  output_data:
