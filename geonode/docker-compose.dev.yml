@@ -1,10 +1,5 @@
 version: '3.9'
 
-networks:
-  default:
-    external: true
-    name: drought-map-hub-network
-
 # Common Django template for GeoNode and Celery services below
 x-common-django:
   &default-common-django
@@ -42,8 +37,6 @@ services:
       - IS_CELERY=False
     entrypoint: ["/usr/src/drought_map_hub/entrypoint.sh"]
     command: "uwsgi --ini /usr/src/drought_map_hub/uwsgi.ini"
-    ports:
-      - "8001:8000"
 
   # Celery worker that executes celery tasks created by Django.
   celery:
@@ -71,8 +64,8 @@ services:
     environment:
       - RESOLVER=127.0.0.11
     ports:
-      - "8080:80"
-      - "8443:443"
+      - "${HTTP_PORT}:80"
+      - "${HTTPS_PORT}:443"
     volumes:
       - nginx-confd:/etc/nginx
       - nginx-certificates:/geonode-certificates
@@ -110,7 +103,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8081:8080"
+      - "8080:8080"
     volumes:
       - statics:/mnt/volumes/statics
       - geoserver-data-dir:/geoserver_data/data
