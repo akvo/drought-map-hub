@@ -3,7 +3,7 @@ services:
   frontend_build:
     image: akvo/akvo-node-18-alpine:20230831.105309.b9593b7
     container_name: frontend_build
-    env_file: "./app.env"
+    env_file: "../.env"
     working_dir: /app
     environment:
       - CI_COMMIT=${CI_COMMIT}
@@ -11,11 +11,11 @@ services:
       - /bin/bash
       - -c
       - |
-        mv frontend/next.config.prod.mjs frontend/next.config.mjs
-        echo 'WEBDOMAIN=${WEBDOMAIN}' >> frontend/.env
-        echo 'NEXT_AUTH_SECRET_KEY=${SECRET_KEY}' >> frontend/.env
-        echo 'SESSION_SECRET=${SESSION_SECRET}' >> frontend/.env
-        echo 'GEONODE_BASE_URL=${GEONODE_BASE_URL}' >> frontend/.env
+        mv next.config.prod.mjs next.config.mjs
+        echo 'WEBDOMAIN=${WEBDOMAIN}' >> .env
+        echo 'NEXT_AUTH_SECRET_KEY=${SECRET_KEY}' >> .env
+        echo 'SESSION_SECRET=${SESSION_SECRET}' >> .env
+        echo 'GEONODE_BASE_URL=${GEONODE_BASE_URL}' >> .env
         cd frontend && yarn install --no-progress --frozen-lock && yarn build
     volumes:
       - ..:/app:delegated
