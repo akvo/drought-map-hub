@@ -9,3 +9,5 @@ db.dbml
 **/app.env
 **/rundeck.env
 **/realm.properties
+rundeck.env.*
+realm.properties.backup.*

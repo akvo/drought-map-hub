@@ -1,0 +1,111 @@
+[
+  {
+    "defaultTab": "nodes",
+    "description": "",
+    "executionEnabled": true,
+    "id": "812b4055-d560-467d-bb15-6cc8cdb01182",
+    "loglevel": "INFO",
+    "name": "CDI-E Automation",
+    "nodeFilterEditable": false,
+    "nodefilters": {
+      "dispatch": {
+        "excludePrecedence": true,
+        "keepgoing": false,
+        "rankOrder": "ascending",
+        "successOnEmptyNodeFilter": false,
+        "threadcount": "1"
+      },
+      "filter": "name: cdi-script "
+    },
+    "nodesSelectedByDefault": true,
+    "notification": {
+      "onavgduration": {
+        "email": {
+          "attachLog": true,
+          "attachLogInFile": true,
+          "recipients": "iwan@akvo.org",
+          "subject": "${job.name} - ${option.year_month} - Job Exceeded average duration"
+        }
+      },
+      "onfailure": {
+        "email": {
+          "attachLog": true,
+          "attachLogInFile": true,
+          "recipients": "iwan@akvo.org",
+          "subject": "${job.name}- ${option.year_month} - Execution Error"
+        }
+      },
+      "onsuccess": {
+        "email": {
+          "attachLog": true,
+          "attachLogInFile": true,
+          "recipients": "iwan@akvo.org",
+          "subject": "${job.name} - ${option.year_month} - Success"
+        }
+      }
+    },
+    "notifyAvgDurationThreshold": "5m",
+    "options": [
+      {
+        "dateFormat": "YYYY-MM",
+        "isDate": true,
+        "label": "Year Month",
+        "name": "year_month",
+        "required": true,
+        "value": "${DATE:YYYY-MM}"
+      },
+      {
+        "label": "LST Weight",
+        "name": "lst_weight",
+        "value": "0.3"
+      },
+      {
+        "label": "NDVI Weight",
+        "name": "ndvi_weight",
+        "value": "0.3"
+      },
+      {
+        "label": "SM Weight",
+        "name": "sm_weight",
+        "value": "0.0"
+      },
+      {
+        "label": "SPI Weight",
+        "name": "spi_weight",
+        "value": "0.4"
+      }
+    ],
+    "plugins": {
+      "ExecutionLifecycle": {}
+    },
+    "schedule": {
+      "dayofmonth": {
+        "day": "28-31"
+      },
+      "month": "*",
+      "time": {
+        "hour": "23",
+        "minute": "0",
+        "seconds": "0"
+      },
+      "year": "*"
+    },
+    "scheduleEnabled": true,
+    "sequence": {
+      "commands": [
+        {
+          "description": "Update Weight",
+          "exec": "docker compose exec cdi ./change-weight.sh --lst_weight=${option.lst_weight} --ndvi_weight=${option.ndvi_weight} --spi_weight=${option.spi_weight} --sm_weight=${option.sm_weight}"
+        },
+        {
+          "description": "CDI Automation workflow",
+          "exec": "docker compose exec cdi ./job.sh"
+        }
+      ],
+      "keepgoing": false,
+      "strategy": "node-first"
+    },
+    "timeZone": "Africa/Johannesburg",
+    "uuid": "812b4055-d560-467d-bb15-6cc8cdb01182"
+  }
+]
