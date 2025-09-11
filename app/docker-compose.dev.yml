@@ -97,8 +97,6 @@ services:
     environment:
       RUNDECK_SERVER_FORWARDED: true
       RUNDECK_API_TOKENS_DURATION_MAX: 0
-    ports:
-      - "4440:4440"
     volumes:
       - ./rundeck/templates:/home/rundeck/server/config/templates
       - ./rundeck/data:/home/rundeck/server/data

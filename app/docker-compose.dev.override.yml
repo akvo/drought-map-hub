@@ -6,6 +6,7 @@ services:
       - 8000:8000
       - 5050:5050
       - 3000:3000
+      - 4440:4440
   backend:
     network_mode: service:mainnetwork
   worker:
@@ -23,6 +24,8 @@ services:
       - pg-admin-data:/var/lib/pgadmin
     depends_on:
       - db
+    network_mode: service:mainnetwork
+  rundeck:
     network_mode: service:mainnetwork
 volumes:
   pg-admin-data:
