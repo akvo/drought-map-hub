@@ -9,21 +9,26 @@ set -e
 MODE=""
 SERVICE=""
 DRY_RUN=false
+DOWN_MODE=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Function to display usage
 usage() {
     echo "Usage: $0 mode=<dev|prod> service=<all|geonode|app|cdi> [--dry-run]"
+    echo "   or: $0 down [--dry-run]"
     echo ""
     echo "Parameters:"
     echo "  mode=dev|prod    - Development or production mode"
     echo "  service=all|geonode|app|cdi - Which service to run"
+    echo "  down             - Stop all running services"
     echo "  --dry-run        - Show what would be executed without running"
     echo ""
     echo "Examples:"
     echo "  $0 mode=dev service=all"
     echo "  $0 mode=prod service=app --dry-run"
     echo "  $0 mode=dev service=cdi"
+    echo "  $0 down"
+    echo "  $0 down --dry-run"
     exit 1
 }
 
@@ -35,6 +40,9 @@ for arg in "$@"; do
             ;;
         service=*)
             SERVICE="${arg#*=}"
+            ;;
+        down)
+            DOWN_MODE=true
             ;;
         --dry-run)
             DRY_RUN=true
@@ -50,18 +58,21 @@ for arg in "$@"; do
 done
 
 # Validate arguments
-if [[ -z "$MODE" || -z "$SERVICE" ]]; then
+if [[ "$DOWN_MODE" == "true" ]]; then
+    # Down mode doesn't need mode and service parameters
+    :
+elif [[ -z "$MODE" || -z "$SERVICE" ]]; then
     echo "Error: Both mode and service parameters are required."
     echo ""
     usage
 fi
 
-if [[ "$MODE" != "dev" && "$MODE" != "prod" ]]; then
+if [[ "$MODE" != "dev" && "$MODE" != "prod" && "$DOWN_MODE" != "true" ]]; then
     echo "Error: mode must be either 'dev' or 'prod'"
     usage
 fi
 
-if [[ "$SERVICE" != "all" && "$SERVICE" != "geonode" && "$SERVICE" != "app" && "$SERVICE" != "cdi" ]]; then
+if [[ "$SERVICE" != "all" && "$SERVICE" != "geonode" && "$SERVICE" != "app" && "$SERVICE" != "cdi" && "$DOWN_MODE" != "true" ]]; then
     echo "Error: service must be one of 'all', 'geonode', 'app', or 'cdi'"
     usage
 fi
@@ -108,11 +119,22 @@ run_service() {
         echo "Found compose file: $compose_file"
         
         if [[ "$mode" == "dev" ]]; then
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml up -d"
+            # Check if override file exists
+            local override_file="$service_dir/docker-compose.dev.override.yml"
+            if [[ -f "$override_file" ]]; then
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d"
+                else
+                    echo "Running: docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d"
+                    docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d
+                fi
             else
-                echo "Running: docker compose -f docker-compose.dev.yml up -d"
-                docker compose -f docker-compose.dev.yml up -d
+                if [[ "$DRY_RUN" == "true" ]]; then
+                    echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml up -d"
+                else
+                    echo "Running: docker compose -f docker-compose.dev.yml up -d"
+                    docker compose -f docker-compose.dev.yml up -d
+                fi
             fi
         else
             if [[ "$DRY_RUN" == "true" ]]; then
@@ -152,24 +174,17 @@ run_traefik() {
     
     cd "$traefik_dir"
     
-    local compose_file
-    if compose_file=$(check_compose_file "$traefik_dir" "$mode"); then
+    # Traefik uses the same docker-compose.yml for both dev and prod
+    local compose_file="$traefik_dir/docker-compose.yml"
+    
+    if [[ -f "$compose_file" ]]; then
         echo "Found compose file: $compose_file"
         
-        if [[ "$mode" == "dev" ]]; then
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "[DRY RUN] Would execute: docker compose -f docker-compose.dev.yml up -d"
-            else
-                echo "Running: docker compose -f docker-compose.dev.yml up -d"
-                docker compose -f docker-compose.dev.yml up -d
-            fi
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Would execute: docker compose up -d"
         else
-            if [[ "$DRY_RUN" == "true" ]]; then
-                echo "[DRY RUN] Would execute: docker compose up -d"
-            else
-                echo "Running: docker compose up -d"
-                docker compose up -d
-            fi
+            echo "Running: docker compose up -d"
+            docker compose up -d
         fi
         
         if [[ "$DRY_RUN" == "true" ]]; then
@@ -178,7 +193,7 @@ run_traefik() {
             echo "Traefik started successfully!"
         fi
     else
-        echo "Warning: No docker-compose file found for traefik in $mode mode, skipping..."
+        echo "Warning: No docker-compose file found for traefik, skipping..."
     fi
     
     cd "$SCRIPT_DIR"
@@ -198,51 +213,202 @@ check_docker() {
     fi
 }
 
-# Main execution
-echo "========================================"
-echo "  Drought Map Hub - Service Runner     "
-echo "========================================"
-echo "Mode: $MODE"
-echo "Service: $SERVICE"
-if [[ "$DRY_RUN" == "true" ]]; then
-    echo "Dry Run: ENABLED (no commands will be executed)"
-fi
-echo ""
+# Function to create network if it doesn't exist
+create_network() {
+    local network_name="drought-map-hub-network"
+    
+    if ! docker network ls | grep -q "$network_name"; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Would create network: $network_name"
+        else
+            echo "Creating Docker network: $network_name"
+            docker network create "$network_name"
+            echo "Network $network_name created successfully!"
+        fi
+    else
+        echo "Network $network_name already exists."
+    fi
+    echo ""
+}
 
-# Check if Docker is available (skip in dry-run mode)
-if [[ "$DRY_RUN" != "true" ]]; then
-    check_docker
-fi
+# Function to stop docker-compose for a specific service
+stop_service() {
+    local service="$1"
+    local service_dir="$SCRIPT_DIR/$service"
+    
+    echo "========================================"
+    echo "Stopping $service..."
+    echo "========================================"
+    
+    if [[ ! -d "$service_dir" ]]; then
+        echo "Warning: Directory $service_dir does not exist, skipping..."
+        return 0
+    fi
+    
+    cd "$service_dir"
+    
+    # Check for different compose file patterns
+    local compose_files=()
+    if [[ -f "docker-compose.dev.yml" && -f "docker-compose.dev.override.yml" ]]; then
+        compose_files=("-f" "docker-compose.dev.yml" "-f" "docker-compose.dev.override.yml")
+    elif [[ -f "docker-compose.dev.yml" ]]; then
+        compose_files=("-f" "docker-compose.dev.yml")
+    elif [[ -f "docker-compose.yml" ]]; then
+        compose_files=("-f" "docker-compose.yml")
+    fi
+    
+    if [[ ${#compose_files[@]} -gt 0 ]]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Would execute: docker compose ${compose_files[*]} down"
+        else
+            echo "Running: docker compose ${compose_files[*]} down"
+            docker compose "${compose_files[@]}" down
+        fi
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] $service would be stopped successfully!"
+        else
+            echo "$service stopped successfully!"
+        fi
+    else
+        echo "Warning: No docker-compose file found for $service, skipping..."
+    fi
+    
+    cd "$SCRIPT_DIR"
+    echo ""
+}
 
-# Always start traefik first (if it exists)
-run_traefik "$MODE"
+# Function to stop traefik
+stop_traefik() {
+    local traefik_dir="$SCRIPT_DIR/traefik"
+    
+    echo "========================================"
+    echo "Stopping traefik..."
+    echo "========================================"
+    
+    if [[ ! -d "$traefik_dir" ]]; then
+        echo "Warning: Traefik directory does not exist, skipping..."
+        return 0
+    fi
+    
+    cd "$traefik_dir"
+    
+    if [[ -f "docker-compose.yml" ]]; then
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Would execute: docker compose down"
+        else
+            echo "Running: docker compose down"
+            docker compose down
+        fi
+        
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Traefik would be stopped successfully!"
+        else
+            echo "Traefik stopped successfully!"
+        fi
+    else
+        echo "Warning: No docker-compose file found for traefik, skipping..."
+    fi
+    
+    cd "$SCRIPT_DIR"
+    echo ""
+}
 
-# Run services based on the service parameter
-if [[ "$SERVICE" == "all" ]]; then
-    # Run all services
-    for service in app cdi geonode; do
-        run_service "$service" "$MODE"
+# Function to stop all services
+stop_all_services() {
+    echo "========================================"
+    echo "  Stopping All Services                "
+    echo "========================================"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Dry Run: ENABLED (no commands will be executed)"
+    fi
+    echo ""
+    
+    # Stop services in reverse order (geonode, cdi, app, then traefik)
+    for service in geonode cdi app; do
+        stop_service "$service"
     done
-else
-    # Run specific service
-    run_service "$SERVICE" "$MODE"
-fi
+    
+    # Stop traefik last
+    stop_traefik
+}
 
-echo "========================================"
-if [[ "$DRY_RUN" == "true" ]]; then
-    echo "  Dry Run Complete - No services started "
+# Main execution
+if [[ "$DOWN_MODE" == "true" ]]; then
+    echo "========================================"
+    echo "  Drought Map Hub - Service Stopper    "
+    echo "========================================"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Dry Run: ENABLED (no commands will be executed)"
+    fi
+    echo ""
+    
+    # Check if Docker is available (skip in dry-run mode)
+    if [[ "$DRY_RUN" != "true" ]]; then
+        check_docker
+    fi
+
+    # Create network if it doesn't exist (in case it was removed)
+    create_network
+    
+    stop_all_services
+    
+    echo "========================================"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "  Dry Run Complete - No services stopped "
+    else
+        echo "  All services stopped successfully!     "
+    fi
+    echo "========================================"
 else
-    echo "  All requested services started!      "
-fi
-echo "========================================"
-echo ""
-if [[ "$DRY_RUN" != "true" ]]; then
-    echo "To check running containers:"
-    echo "  docker ps"
+    echo "========================================"
+    echo "  Drought Map Hub - Service Runner     "
+    echo "========================================"
+    echo "Mode: $MODE"
+    echo "Service: $SERVICE"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "Dry Run: ENABLED (no commands will be executed)"
+    fi
     echo ""
-    echo "To stop services:"
-    echo "  docker compose down (in each service directory)"
+
+    # Check if Docker is available (skip in dry-run mode)
+    if [[ "$DRY_RUN" != "true" ]]; then
+        check_docker
+    fi
+
+    # Create network if it doesn't exist
+    create_network
+
+    # Always start traefik first (if it exists)
+    run_traefik "$MODE"
+
+    # Run services based on the service parameter
+    if [[ "$SERVICE" == "all" ]]; then
+        # Run all services
+        for service in app cdi geonode; do
+            run_service "$service" "$MODE"
+        done
+    else
+        # Run specific service
+        run_service "$SERVICE" "$MODE"
+    fi
+
+    echo "========================================"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "  Dry Run Complete - No services started "
+    else
+        echo "  All requested services started!      "
+    fi
+    echo "========================================"
     echo ""
-    echo "To view logs:"
-    echo "  docker compose logs -f (in each service directory)"
+    if [[ "$DRY_RUN" != "true" ]]; then
+        echo "To check running containers:"
+        echo "  docker ps"
+        echo ""
+        echo "To stop services:"
+        echo "  $0 down"
+        echo ""
+        echo "To view logs:"
+        echo "  docker compose logs -f (in each service directory)"
+    fi
 fi
