@@ -59,6 +59,10 @@ else
         invoke updateadmin
     fi
 
+    # Run add_cdi_categories command to ensure CDI categories exist
+    echo "Running add_cdi_categories management command"
+    python /usr/src/drought_map_hub/manage.py add_cdi_categories
+
     invoke statics
 
     echo "Executing UWSGI server $cmd for Production"
