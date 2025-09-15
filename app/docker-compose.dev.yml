@@ -1,10 +1,4 @@
 version: "3.9"
-
-networks:
-  default:
-    external: true
-    name: drought-map-hub-network
-
 services:
   mainnetwork:
     image: alpine:3.14
@@ -14,6 +8,7 @@ services:
     volumes:
       - ./database/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
       - pg-data:/var/lib/postgresql/data
+      # - ./database/script:/script:ro
     environment:
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
       - DB_HOST=$DB_HOST
@@ -49,8 +44,6 @@ services:
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
       - CSRF_TRUSTED_ORIGINS
-    ports:
-      - "8000:8000"
     depends_on:
       - db
       - rundeck
@@ -64,8 +57,6 @@ services:
       - WEBDOMAIN=${WEBDOMAIN}
       - SESSION_SECRET=${SESSION_SECRET}
       - GEONODE_BASE_URL=${GEONODE_BASE_URL}
-    ports:
-      - "3000:3000"
     depends_on:
       - backend
   worker:
@@ -93,7 +84,7 @@ services:
       - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
-      - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
+      - CSRF_TRUSTED_ORIGINS
     depends_on:
       - backend
       - rundeck
@@ -106,8 +97,6 @@ services:
     environment:
       RUNDECK_SERVER_FORWARDED: true
       RUNDECK_API_TOKENS_DURATION_MAX: 0
-    ports:
-      - "4440:4440"
     volumes:
       - ./rundeck/templates:/home/rundeck/server/config/templates
       - ./rundeck/data:/home/rundeck/server/data

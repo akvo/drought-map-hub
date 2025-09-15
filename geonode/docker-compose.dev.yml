@@ -85,21 +85,6 @@ services:
       retries: 5
       start_period: 30s
 
-  # Gets and installs letsencrypt certificates
-  letsencrypt:
-    image: ${COMPOSE_PROJECT_NAME}/letsencrypt:${LETSENCRYPT_BASE_IMAGE_VERSION}
-    build:
-      context: ./docker/letsencrypt
-      dockerfile: Dockerfile
-      args:
-        - BASE_IMAGE_VERSION=${LETSENCRYPT_BASE_IMAGE_VERSION}
-    container_name: letsencrypt4${COMPOSE_PROJECT_NAME}
-    env_file:
-      - .env
-    volumes:
-      - nginx-certificates:/geonode-certificates
-    restart: unless-stopped
-
   # Geoserver backend
   geoserver:
     image: ${COMPOSE_PROJECT_NAME}/geoserver:${GEOSERVER_BASE_IMAGE_VERSION}
