@@ -202,6 +202,54 @@ run_traefik() {
     echo ""
 }
 
+# Function to build frontend for production
+build_frontend() {
+    local frontend_dir="$SCRIPT_DIR/app/frontend"
+
+    echo "========================================"
+    echo "Building NextJS frontend for production..."
+    echo "========================================"
+
+    if [[ ! -d "$frontend_dir" ]]; then
+        echo "Warning: Frontend directory does not exist, skipping build..."
+        return 0
+    fi
+
+    cd "$frontend_dir"
+
+    local compose_file="$frontend_dir/docker-compose.frontend-build.yml"
+
+    if [[ -f "$compose_file" ]]; then
+        echo "Found frontend build compose file: $compose_file"
+
+        # Load environment variables from app/.env for the build process
+        local env_file="$SCRIPT_DIR/app/.env"
+        local compose_args=""
+        if [[ -f "$env_file" ]]; then
+            echo "Using environment file: $env_file"
+            compose_args="--env-file $env_file"
+        fi
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Would execute: docker compose $compose_args -f docker-compose.frontend-build.yml run --rm frontend_build"
+        else
+            echo "Running: docker compose $compose_args -f docker-compose.frontend-build.yml run --rm frontend_build"
+            docker compose $compose_args -f docker-compose.frontend-build.yml run --rm frontend_build
+        fi
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+            echo "[DRY RUN] Frontend build would be completed successfully!"
+        else
+            echo "Frontend build completed successfully!"
+        fi
+    else
+        echo "Warning: No frontend build compose file found, skipping build..."
+    fi
+
+    cd "$SCRIPT_DIR"
+    echo ""
+}
+
 # Function to check if Docker is running
 check_docker() {
     if ! command -v docker &> /dev/null; then
@@ -388,6 +436,11 @@ else
     # Start traefik only in production mode
     if [[ "$MODE" == "prod" ]]; then
         run_traefik "$MODE"
+    fi
+
+    # Build frontend for production mode if app service is being started
+    if [[ "$MODE" == "prod" && ("$SERVICE" == "app" || "$SERVICE" == "all") ]]; then
+        build_frontend
     fi
 
     # Run services based on the service parameter
