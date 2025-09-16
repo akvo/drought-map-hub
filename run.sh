@@ -281,6 +281,63 @@ create_network() {
     echo ""
 }
 
+# Function to copy geonode settings to app and cdi when running all services
+copy_geonode_settings() {
+    local geonode_env="$SCRIPT_DIR/geonode/.env"
+    local app_env="$SCRIPT_DIR/app/.env"
+    local cdi_env="$SCRIPT_DIR/cdi/.env"
+
+    echo "========================================"
+    echo "Copying Geonode settings to app and cdi..."
+    echo "========================================"
+
+    if [[ ! -f "$geonode_env" ]]; then
+        echo "Warning: $geonode_env not found, skipping settings copy..."
+        return 0
+    fi
+
+    # Extract values from geonode/.env
+    local siteurl=$(grep "^SITEURL=" "$geonode_env" | cut -d'=' -f2-)
+    local admin_username=$(grep "^ADMIN_USERNAME=" "$geonode_env" | cut -d'=' -f2-)
+    local admin_password=$(grep "^ADMIN_PASSWORD=" "$geonode_env" | cut -d'=' -f2-)
+
+    if [[ -z "$siteurl" || -z "$admin_username" || -z "$admin_password" ]]; then
+        echo "Warning: Could not extract all required values from geonode/.env, skipping settings copy..."
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] Would copy SITEURL=$siteurl to GEONODE_BASE_URL in app/.env"
+        echo "[DRY RUN] Would copy ADMIN_USERNAME=$admin_username to GEONODE_ADMIN_USERNAME in app/.env"
+        echo "[DRY RUN] Would copy ADMIN_PASSWORD=$admin_password to GEONODE_ADMIN_PASSWORD in app/.env"
+        echo "[DRY RUN] Would copy SITEURL=$siteurl to GEONODE_URL in cdi/.env"
+        echo "[DRY RUN] Would copy ADMIN_USERNAME=$admin_username to GEONODE_USERNAME in cdi/.env"
+        echo "[DRY RUN] Would copy ADMIN_PASSWORD=$admin_password to GEONODE_PASSWORD in cdi/.env"
+    else
+        # Update app/.env
+        if [[ -f "$app_env" ]]; then
+            sed -i "s|^GEONODE_BASE_URL=.*|GEONODE_BASE_URL=$siteurl|" "$app_env"
+            sed -i "s|^GEONODE_ADMIN_USERNAME=.*|GEONODE_ADMIN_USERNAME=$admin_username|" "$app_env"
+            sed -i "s|^GEONODE_ADMIN_PASSWORD=.*|GEONODE_ADMIN_PASSWORD=$admin_password|" "$app_env"
+            echo "Updated app/.env with Geonode settings"
+        else
+            echo "Warning: $app_env not found, skipping app settings update..."
+        fi
+
+        # Update cdi/.env
+        if [[ -f "$cdi_env" ]]; then
+            sed -i "s|^GEONODE_URL=.*|GEONODE_URL=$siteurl|" "$cdi_env"
+            sed -i "s|^GEONODE_USERNAME=.*|GEONODE_USERNAME=$admin_username|" "$cdi_env"
+            sed -i "s|^GEONODE_PASSWORD=.*|GEONODE_PASSWORD=$admin_password|" "$cdi_env"
+            echo "Updated cdi/.env with Geonode settings"
+        else
+            echo "Warning: $cdi_env not found, skipping cdi settings update..."
+        fi
+    fi
+
+    echo ""
+}
+
 # Function to stop docker-compose for a specific service
 stop_service() {
     local service="$1"
@@ -445,6 +502,9 @@ else
 
     # Run services based on the service parameter
     if [[ "$SERVICE" == "all" ]]; then
+        # Copy geonode settings to app and cdi
+        copy_geonode_settings
+
         # Run all services
         for service in app cdi geonode; do
             run_service "$service" "$MODE"
