@@ -70,3 +70,5 @@ local_settings.py
 .vagrant/
 Vagrantfile
 /.env
+
+celerybeat-schedule
