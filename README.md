@@ -90,7 +90,7 @@ The CDI automation script (`job.sh`) is designed to run periodically (ideally mo
 To deploy a new instance of the DMH for a client, follow these steps:
 
 1.  **Clone the Repository**: Obtain the DMH repository and navigate into its directory.
-2.  **Run Installation Script**: Execute the `install.sh` script provided within the repository.
+2.  **Run Installation Script**: Execute the `configure.sh` script provided within the repository.
 3.  **Configure Domain Names**:
     *   Set the **GeoNode web domain** by configuring `WEBDOMAIN_GEONODE` (default: `http://localhost`).
     *   Set the **DMH web domain** by configuring `WEBDOMAIN` (default: `http://localhost:3000`).
@@ -100,7 +100,7 @@ To deploy a new instance of the DMH for a client, follow these steps:
 5.  **Set Earthdata Credentials**: Configure the **NASA Earthdata credentials** (username, password) required for downloading certain datasets. These variables are typically defined in the `.env` file for the CDI Automation repository.
 6.  **Confirm Deployment Environment**: Confirm the deployment environment (e.g., `--mode=development` and `--service=all` are defaults).
 
-The `install.sh` script will automatically perform the following:
+The `configure.sh` script will automatically perform the following:
 *   Save all configuration data to their respective environment services.
 *   Start the GeoNode and DMH containers using Docker Compose.
 *   Seed default administrator users for both GeoNode and DMH.
@@ -129,5 +129,30 @@ After the initial script execution, some manual configurations are required:
     *   To apply or update this file, convert the shapefile to TopoJSON format (e.g., using `https://mapshaper.org`) and ensure it contains necessary properties like `name`, `region`, and `administration_id`.
     *   After placing the `.topojson` file, execute `python manage.py generate_administrations_seeder` and `python manage.py generate_config` commands within the backend container to update the system and generate the frontend `config.js` file.
 4.  **Restart the Drought-map Hub** to apply any updated environment variables.
+
+### Post-Installation Script Execution
+
+Once all services are available and running properly, execute the `post-installation.sh` script to complete the GeoServer configuration:
+
+```bash
+./post-installation.sh
+```
+
+This script performs the following essential tasks:
+*   **Updates GeoServer admin password**: Changes the default GeoServer admin password from "geoserver" to the password specified in the GeoNode environment configuration.
+*   **Enables XML External Entities**: Configures GeoServer to allow XML external entities (`xmlExternalEntitiesEnabled=true`), which is required for proper functioning of the spatial data infrastructure.
+
+**Prerequisites for running the post-installation script**:
+*   All Docker containers must be running and accessible
+*   GeoNode service must be fully initialized and responsive
+*   The `./geonode/.env` file must contain the required environment variables:
+    *   `GEOSERVER_PUBLIC_LOCATION`: The public URL of the GeoServer instance
+    *   `GEOSERVER_ADMIN_USER`: The GeoServer admin username
+    *   `GEOSERVER_ADMIN_PASSWORD`: The desired admin password
+
+**Important Notes**:
+*   The script will wait 15 seconds after updating the password to allow GeoServer to process the change
+*   If the password update fails, the XML entities configuration may also fail
+*   Verify that GeoServer is accessible at the configured public location before running the script
 
 The DMH configuration is now complete and ready for use.
