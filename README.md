@@ -130,4 +130,29 @@ After the initial script execution, some manual configurations are required:
     *   After placing the `.topojson` file, execute `python manage.py generate_administrations_seeder` and `python manage.py generate_config` commands within the backend container to update the system and generate the frontend `config.js` file.
 4.  **Restart the Drought-map Hub** to apply any updated environment variables.
 
+### Post-Installation Script Execution
+
+Once all services are available and running properly, execute the `post-installation.sh` script to complete the GeoServer configuration:
+
+```bash
+./post-installation.sh
+```
+
+This script performs the following essential tasks:
+*   **Updates GeoServer admin password**: Changes the default GeoServer admin password from "geoserver" to the password specified in the GeoNode environment configuration.
+*   **Enables XML External Entities**: Configures GeoServer to allow XML external entities (`xmlExternalEntitiesEnabled=true`), which is required for proper functioning of the spatial data infrastructure.
+
+**Prerequisites for running the post-installation script**:
+*   All Docker containers must be running and accessible
+*   GeoNode service must be fully initialized and responsive
+*   The `./geonode/.env` file must contain the required environment variables:
+    *   `GEOSERVER_PUBLIC_LOCATION`: The public URL of the GeoServer instance
+    *   `GEOSERVER_ADMIN_USER`: The GeoServer admin username
+    *   `GEOSERVER_ADMIN_PASSWORD`: The desired admin password
+
+**Important Notes**:
+*   The script will wait 15 seconds after updating the password to allow GeoServer to process the change
+*   If the password update fails, the XML entities configuration may also fail
+*   Verify that GeoServer is accessible at the configured public location before running the script
+
 The DMH configuration is now complete and ready for use.
