@@ -90,7 +90,7 @@ The CDI automation script (`job.sh`) is designed to run periodically (ideally mo
 To deploy a new instance of the DMH for a client, follow these steps:
 
 1.  **Clone the Repository**: Obtain the DMH repository and navigate into its directory.
-2.  **Run Installation Script**: Execute the `install.sh` script provided within the repository.
+2.  **Run Installation Script**: Execute the `configure.sh` script provided within the repository.
 3.  **Configure Domain Names**:
     *   Set the **GeoNode web domain** by configuring `WEBDOMAIN_GEONODE` (default: `http://localhost`).
     *   Set the **DMH web domain** by configuring `WEBDOMAIN` (default: `http://localhost:3000`).
@@ -100,7 +100,7 @@ To deploy a new instance of the DMH for a client, follow these steps:
 5.  **Set Earthdata Credentials**: Configure the **NASA Earthdata credentials** (username, password) required for downloading certain datasets. These variables are typically defined in the `.env` file for the CDI Automation repository.
 6.  **Confirm Deployment Environment**: Confirm the deployment environment (e.g., `--mode=development` and `--service=all` are defaults).
 
-The `install.sh` script will automatically perform the following:
+The `configure.sh` script will automatically perform the following:
 *   Save all configuration data to their respective environment services.
 *   Start the GeoNode and DMH containers using Docker Compose.
 *   Seed default administrator users for both GeoNode and DMH.

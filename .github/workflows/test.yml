@@ -30,7 +30,7 @@ jobs:
 
     - name: Make scripts executable
       run: |
-        chmod +x install.sh
+        chmod +x configure.sh
         chmod +x run.sh
 
     - name: Test run.sh dry-run mode
@@ -45,7 +45,7 @@ jobs:
 
     - name: Validate script syntax
       run: |
-        bash -n install.sh
+        bash -n configure.sh
         bash -n run.sh
 
   test-install-script:
@@ -62,17 +62,17 @@ jobs:
 
     - name: Make scripts executable
       run: |
-        chmod +x install.sh
+        chmod +x configure.sh
         chmod +x run.sh
 
-    - name: Test install.sh with automated inputs
+    - name: Test configure.sh with automated inputs
       run: |
-        # Create expect script to automate install.sh interaction
+        # Create expect script to automate configure.sh interaction
         cat > test_install.exp << 'EOF'
         #!/usr/bin/expect -f
         set timeout 30
 
-        spawn ./install.sh
+        spawn ./configure.sh
 
         # Email configuration
         expect "EMAIL_HOST*"
@@ -163,7 +163,7 @@ jobs:
 
     - name: Make scripts executable
       run: |
-        chmod +x install.sh
+        chmod +x configure.sh
         chmod +x run.sh
 
     - name: Test run.sh with invalid arguments
