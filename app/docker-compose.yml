@@ -1,102 +1,74 @@
-version: "3.9"
-
-networks:
-  default:
-    external: true
-    name: drought-map-hub-network
-
+---
 services:
   mainnetwork:
     image: alpine:3.14
     command: ["tail", "-f", "/dev/null"]
+    ports:
+      - 8000:8000 # backend port
+      - 5050:5050 # pgAdmin port
+      - 81:81 # frontend port
+      - 4440:4440 # rundeck port
   db:
     image: postgres:13-alpine
+    container_name: db
+    restart: unless-stopped
+    env_file: "./.env"
     volumes:
       - ./database/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
       - pg-data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-      - DB_HOST=$DB_HOST
-      - DB_PASSWORD=$DB_PASSWORD
-      - DB_SCHEMA=$DB_SCHEMA
-      - DB_USER=$DB_USER
-    ports:
-      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    network_mode: service:mainnetwork
   backend:
-    image: python:3.9
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    env_file: "./.env"
+    restart: unless-stopped
     working_dir: /app
-    command: ["./start.sh"]
-    volumes:
-      - ./backend:/app:delegated
-    environment:
-      - DB_SCHEMA=$DB_SCHEMA
-      - DB_USER=$DB_USER
-      - DB_PASSWORD=$DB_PASSWORD
-      - DB_HOST=$DB_HOST
-      - DEBUG=$DEBUG
-      - SECRET_KEY=$SECRET_KEY
-      - GEONODE_BASE_URL=$GEONODE_BASE_URL
-      - GEONODE_ADMIN_USERNAME=$GEONODE_ADMIN_USERNAME
-      - GEONODE_ADMIN_PASSWORD=$GEONODE_ADMIN_PASSWORD
-      - RUNDECK_API_URL=$RUNDECK_API_URL
-      - RUNDECK_API_TOKEN=$RUNDECK_API_TOKEN
-      - COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN:-}
-      - EMAIL_HOST=$EMAIL_HOST
-      - EMAIL_PORT=$EMAIL_PORT
-      - EMAIL_USE_TLS=$EMAIL_USE_TLS
-      - EMAIL_HOST_USER=$EMAIL_HOST_USER
-      - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
-      - EMAIL_FROM=$EMAIL_FROM
-      - WEBDOMAIN=$WEBDOMAIN
-      - CSRF_TRUSTED_ORIGINS
-    ports:
-      - "8000:8000"
     depends_on:
-      - db
-      - rundeck
+      db:
+        condition: service_healthy
+    network_mode: service:mainnetwork
   frontend:
-    image: akvo/akvo-node-18-alpine:20230831.105309.b9593b7
-    command: ["./start.sh"]
-    volumes:
-      - ./frontend:/app:delegated
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file: "./.env"
+    restart: unless-stopped
     working_dir: /app
-    environment:
-      - WEBDOMAIN=${WEBDOMAIN}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - GEONODE_BASE_URL=${GEONODE_BASE_URL}
-    ports:
-      - "3000:3000"
+    network_mode: service:mainnetwork
     depends_on:
       - backend
   worker:
-    image: python:3.9
+    container_name: worker
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker.prod
+    env_file: "./.env"
+    restart: unless-stopped
     working_dir: /app
-    command: ["./run_worker.sh"]
-    volumes:
-      - ./backend:/app:delegated
-    environment:
-      - DB_SCHEMA=$DB_SCHEMA
-      - DB_USER=$DB_USER
-      - DB_PASSWORD=$DB_PASSWORD
-      - DB_HOST=$DB_HOST
-      - DEBUG=$DEBUG
-      - SECRET_KEY=$SECRET_KEY
-      - GEONODE_BASE_URL=$GEONODE_BASE_URL
-      - GEONODE_ADMIN_USERNAME=$GEONODE_ADMIN_USERNAME
-      - GEONODE_ADMIN_PASSWORD=$GEONODE_ADMIN_PASSWORD
-      - RUNDECK_API_URL=$RUNDECK_API_URL
-      - RUNDECK_API_TOKEN=$RUNDECK_API_TOKEN
-      - EMAIL_HOST=$EMAIL_HOST
-      - EMAIL_PORT=$EMAIL_PORT
-      - EMAIL_USE_TLS=$EMAIL_USE_TLS
-      - EMAIL_HOST_USER=$EMAIL_HOST_USER
-      - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
-      - EMAIL_FROM=$EMAIL_FROM
-      - WEBDOMAIN=$WEBDOMAIN
-      - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
     depends_on:
-      - backend
-      - rundeck
+      db:
+        condition: service_healthy
+    network_mode: service:mainnetwork
+
+  backend-cron:
+    container_name: backend-cron
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.cron
+    env_file: "./.env"
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    network_mode: service:mainnetwork
   rundeck:
     build:
       context: ./
@@ -106,13 +78,17 @@ services:
     environment:
       RUNDECK_SERVER_FORWARDED: true
       RUNDECK_API_TOKENS_DURATION_MAX: 0
-    ports:
-      - "4440:4440"
+    network_mode: service:mainnetwork
     volumes:
-      - ./rundeck/templates:/home/rundeck/server/config/templates
-      - ./rundeck/data:/home/rundeck/server/data
-      - ./rundeck/logs:/home/rundeck/server/logs
+      - rundeck_data:/home/rundeck/server/data
+      - rundeck_etl:/home/rundeck/server/logs
+      - rundeck_logs:/home/rundeck/server/logs
       - ./rundeck/realm.properties:/home/rundeck/server/config/realm.properties
+      - ./rundeck/templates:/home/rundeck/server/config/templates
       - ./.env:/home/rundeck/server/config/.env
+
 volumes:
   pg-data:
+  rundeck_data:
+  rundeck_etl:
+  rundeck_logs:
