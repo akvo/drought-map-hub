@@ -1,5 +1,7 @@
 from django.urls import path, include
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
@@ -11,6 +13,7 @@ urlpatterns = [
     path("api/", include("api.v1.v1_users.urls"), name="v1_users"),
     path("api/", include("api.v1.v1_publication.urls"), name="v1_publication"),
     path("api/", include("api.v1.v1_rundeck.urls"), name="v1_rundeck"),
+    path("api/", include("api.v1.v1_setup.urls"), name="v1_setup"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
@@ -19,3 +22,9 @@ urlpatterns = [
     ),
     path("admin/", admin.site.urls),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
+    )
