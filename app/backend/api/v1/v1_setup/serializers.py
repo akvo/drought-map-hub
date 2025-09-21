@@ -1,21 +1,23 @@
 from rest_framework import serializers
-from .models import SiteConfig, Organization
+from api.v1.v1_setup.models import SiteConfig, Organization
 from utils.geojson_processor import process_geojson_file, validate_geojson_file
+from uuid import uuid4
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'website', 'logo',
-            'is_twg', 'is_collaborator', 'created_at', 'updated_at'
+            'id',
+            'name',
+            'website',
+            'logo',
+            'is_twg',
+            'is_collaborator',
+            'created_at',
+            'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-
-    def validate_name(self, value):
-        if not value or not value.strip():
-            raise serializers.ValidationError("Organization name is required.")
-        return value
 
 
 class SetupSerializer(serializers.ModelSerializer):
@@ -121,6 +123,7 @@ class SetupSerializer(serializers.ModelSerializer):
             })
 
         # Create the SiteConfig (without the geojson_file field)
+        validated_data['uuid'] = uuid4()
         site_config = SiteConfig.objects.create(**validated_data)
 
         # Create organizations
@@ -171,7 +174,7 @@ class SetupResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteConfig
         fields = [
-            'id',
+            'uuid',
             'name',
             'topojson_file',
             'organizations',
@@ -179,4 +182,4 @@ class SetupResponseSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'created_at', 'updated_at']
