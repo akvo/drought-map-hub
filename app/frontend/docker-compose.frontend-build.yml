@@ -17,6 +17,7 @@ services:
         echo 'NEXT_AUTH_SECRET_KEY=${SECRET_KEY}' >> frontend/.env
         echo 'SESSION_SECRET=${SESSION_SECRET}' >> frontend/.env
         echo 'GEONODE_BASE_URL=${GEONODE_BASE_URL}' >> frontend/.env
+        echo 'SETUP_SECRET_KEY=${SETUP_SECRET_KEY}' >> frontend/.env
         cd frontend && yarn install --no-progress --frozen-lock && yarn build
     volumes:
       - ..:/app:delegated
