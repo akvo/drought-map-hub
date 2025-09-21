@@ -6,7 +6,11 @@ from pathlib import Path
 from api.v1.v1_setup.models import Organization, SiteConfig
 
 
-@override_settings(USE_TZ=False, TEST_ENV=True)
+@override_settings(
+    USE_TZ=False,
+    TEST_ENV=True,
+    SETUP_SECRET_KEY="test-secret-key"
+)
 class UpdateAppAPITest(APITestCase):
 
     def setUp(self) -> None:
@@ -14,11 +18,14 @@ class UpdateAppAPITest(APITestCase):
         Set up the test environment.
         """
         # Create a sample SiteConfig instance
-        self.app = SiteConfig.objects.create(name="Test Site")
+        self.app = SiteConfig.objects.create(
+            uuid="123e4567-e89b-12d3-a456-426614174000",
+            name="Test Site"
+        )
 
         self.url = reverse("manage_setup", kwargs={
             "version": "v1",
-            "pk": self.app.id
+            "uuid": self.app.uuid
         })
 
         # Create a sample Organization instance
@@ -63,7 +70,12 @@ class UpdateAppAPITest(APITestCase):
             "organizations[1][is_twg]": True,
             "organizations[1][is_collaborator]": False,
         }
-        response = self.client.put(self.url, data, format='multipart')
+        response = self.client.put(
+            self.url,
+            data,
+            format='multipart',
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("name", response.data)
         self.assertIn("organizations", response.data)
@@ -92,7 +104,12 @@ class UpdateAppAPITest(APITestCase):
                 "organizations[0][logo]": img1,
                 "geojson_file": geojson,
             }
-            response = self.client.put(self.url, data, format='multipart')
+            response = self.client.put(
+                self.url,
+                data,
+                format='multipart',
+                HTTP_X_SETUP_SECRET="test-secret-key",
+            )
 
         if response.status_code != status.HTTP_200_OK:
             print(f"Response status: {response.status_code}")

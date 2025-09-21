@@ -6,7 +6,11 @@ from rest_framework import status
 from api.v1.v1_setup.models import Organization, SiteConfig
 
 
-@override_settings(USE_TZ=False, TEST_ENV=True)
+@override_settings(
+    USE_TZ=False,
+    TEST_ENV=True,
+    SETUP_SECRET_KEY="test-secret-key"
+)
 class SetupAppAPITest(APITestCase):
 
     def setUp(self) -> None:
@@ -47,7 +51,12 @@ class SetupAppAPITest(APITestCase):
         data["organizations[1][is_collaborator]"] = "true"
         # Skip logo for now due to image format issues
         # data["organizations[1][logo]"] = self.org_image_2.open("rb")
-        response = self.client.post(url, data, format="multipart")
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("message", response.data)
         self.assertEqual(
@@ -101,7 +110,12 @@ class SetupAppAPITest(APITestCase):
                 }
             ],
         }
-        response = self.client.post(url, data, format="multipart")
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
         self.assertEqual(
@@ -135,7 +149,12 @@ class SetupAppAPITest(APITestCase):
                 }
             ],
         }
-        response = self.client.post(url, data, format="multipart")
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Response should show error message for the missing name
@@ -173,7 +192,12 @@ class SetupAppAPITest(APITestCase):
                 }
             ],
         }
-        response = self.client.post(url, data, format="multipart")
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         # Response should show error message for the invalid file
         self.assertIn("geojson_file", response.data)
@@ -201,7 +225,12 @@ class SetupAppAPITest(APITestCase):
             "geojson_file": self.geojson_file.open("rb"),
             "organizations": [],
         }
-        response = self.client.post(url, data, format="multipart")
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("organizations", response.data)
         # Check if it's Django required field error or our custom validation

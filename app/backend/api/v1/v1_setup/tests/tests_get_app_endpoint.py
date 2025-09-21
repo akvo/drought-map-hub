@@ -5,7 +5,11 @@ from rest_framework import status
 from api.v1.v1_setup.models import Organization, SiteConfig
 
 
-@override_settings(USE_TZ=False, TEST_ENV=True)
+@override_settings(
+    USE_TZ=False,
+    TEST_ENV=True,
+    SETUP_SECRET_KEY="test-secret-key"
+)
 class GetAppAPITest(APITestCase):
 
     def setUp(self) -> None:
@@ -36,7 +40,10 @@ class GetAppAPITest(APITestCase):
         """
         Test the app endpoint for retrieving app information.
         """
-        response = self.client.get(self.url)
+        response = self.client.get(
+            self.url,
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("name", response.data)
         self.assertIn("organizations", response.data)
@@ -54,7 +61,10 @@ class GetAppAPITest(APITestCase):
         """
         # Delete all SiteConfig instances
         SiteConfig.objects.all().delete()
-        response = self.client.get(self.url)
+        response = self.client.get(
+            self.url,
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn("error", response.data)
         self.assertEqual(
