@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -10,6 +11,7 @@ from api.v1.v1_setup.models import SiteConfig, Organization
 from api.v1.v1_setup.serializers import (
     SetupSerializer, SetupResponseSerializer, OrganizationSerializer
 )
+from utils.custom_permissions import IsAdmin
 
 
 class SetupView(APIView):
@@ -138,9 +140,17 @@ class SetupView(APIView):
         }
         return Response(response_data, status=status.HTTP_200_OK)
 
+
+class ManageSetupView(APIView):
+    """
+    PUT: Update specific site configuration by ID.
+    """
+
+    parser_classes = [MultiPartParser, FormParser]
+
     @extend_schema(
         request=inline_serializer(
-            name="UpdateSetupRequest",
+            name="UpdateSetupByIDRequest",
             fields={
                 'name': serializers.CharField(help_text="Site name"),
                 'geojson_file': serializers.FileField(
@@ -165,23 +175,14 @@ class SetupView(APIView):
         ),
         responses={200: SetupResponseSerializer},
         tags=["Setup"],
-        description="Update the site configuration and organizations.",
+        description="Update the site configuration and organizations by ID.",
     )
     def put(self, request, *args, **kwargs):
         """
-        Update site configuration and organizations.
+        Update specific site configuration by ID.
         """
-        # Get pk from kwargs if provided, otherwise get the first site config
-        pk = kwargs.get('pk')
-        if pk:
-            site_config = get_object_or_404(SiteConfig, pk=pk)
-        else:
-            site_config = SiteConfig.objects.first()
-            if not site_config:
-                return Response(
-                    {"error": "Site configuration not found."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+        uuid = kwargs.get('uuid')
+        site_config = get_object_or_404(SiteConfig, uuid=uuid)
 
         serializer = SetupSerializer(
             site_config,
@@ -209,3 +210,88 @@ class SetupView(APIView):
             'updated_at': site_config.updated_at,
         }
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+def to_bool(value):
+    return str(value).lower() in ['true', '1']
+
+
+class OrganizationViewSet(ModelViewSet):
+    """
+    ViewSet for managing organizations.
+    """
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationSerializer
+    permission_classes = [IsAdmin]
+
+    @extend_schema(
+        tags=["Organizations"],
+        description="List all organizations.",
+        parameters=[
+            inline_serializer(
+                name="OrganizationListParams",
+                fields={
+                    'search': serializers.CharField(
+                        help_text="Search organizations by name",
+                        required=False
+                    ),
+                    'is_twg': serializers.BooleanField(
+                        help_text="Filter by TWG organizations",
+                        required=False
+                    ),
+                    'is_collaborator': serializers.BooleanField(
+                        help_text="Filter by collaborator organizations",
+                        required=False
+                    ),
+                }
+            )
+        ],
+        responses={200: OrganizationSerializer(many=True)},
+    )
+    def list(self, request, *args, **kwargs):
+        is_twg = request.query_params.get('is_twg')
+        if is_twg is not None:
+            self.queryset = self.queryset.filter(is_twg=to_bool(is_twg))
+
+        is_collaborator = request.query_params.get('is_collaborator')
+        if is_collaborator is not None:
+            self.queryset = self.queryset.filter(
+                is_collaborator=to_bool(is_collaborator)
+            )
+
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Organizations"],
+        description="Create a new organization.",
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Organizations"],
+        description="Retrieve an organization by ID.",
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Organizations"],
+        description="Update an organization by ID.",
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Organizations"],
+        description="Partially update an organization by ID.",
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        tags=["Organizations"],
+        description="Delete an organization by ID.",
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
