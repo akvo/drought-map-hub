@@ -30,8 +30,21 @@ def process_geojson_file(geojson_file):
         )
         # Convert the GeoDataFrame to a TopoJSON topology
         topo = Topology(gdf)
-        # Get the TopoJSON as a dictionary
-        topojson_data = topo.to_json()
+        # Get the TopoJSON. `Topology.to_json()` may return either a
+        # JSON string or a dict.
+        topojson_raw = topo.to_json()
+        # If it's a string, parse it to a Python dict to avoid writing a
+        # quoted JSON string into the .topojson file (which would add
+        # extra quotes).
+        if isinstance(topojson_raw, str):
+            try:
+                topojson_data = json.loads(topojson_raw)
+            except json.JSONDecodeError:
+                # If parsing fails, fall back to writing the raw string
+                # as-is but wrapped under a key so the output stays JSON.
+                topojson_data = {"topojson": topojson_raw}
+        else:
+            topojson_data = topojson_raw
         # Determine the target filename based on TEST_ENV setting
         if getattr(settings, 'TEST_ENV', False):
             filename = 'country-test.topojson'
