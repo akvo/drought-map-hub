@@ -11,6 +11,10 @@ const initialValues = {
   selectedAdms: [],
   isBulkAction: false,
   refreshMap: false,
+  appConfig: {
+    name: null,
+  },
+  setupGeoData: null,
 };
 
 const appReducer = (state, action) => {
@@ -77,6 +81,19 @@ const appReducer = (state, action) => {
       return {
         ...state,
         geoData: action.payload,
+      };
+    case "SET_SETUP_GEODATA":
+      return {
+        ...state,
+        setupGeoData: action.payload,
+      };
+    case "SET_APP_CONFIG":
+      return {
+        ...state,
+        appConfig: {
+          ...state.appConfig,
+          ...action.payload,
+        },
       };
     default:
       throw Error(
