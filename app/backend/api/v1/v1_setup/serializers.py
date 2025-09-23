@@ -1,4 +1,5 @@
 import os
+import ast
 from django_q.tasks import async_task
 from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
@@ -208,8 +209,43 @@ class BoundingBoxSerializer(serializers.Serializer):
     w_lon = serializers.FloatField()
     e_lon = serializers.FloatField()
 
+    def _align_to_grid(self, value, grid_spacing=0.05):
+        """
+        Align coordinate values to the HDF grid spacing (0.05 degrees)
+        to ensure compatibility with HDFSubGrid calculations.
+        """
+        return round(round(value / grid_spacing) * grid_spacing, 3)
+
+    def _validate_grid_alignment(self, data):
+        """
+        Validate that bounding box coordinates align with HDF grid
+        and can generate valid latitude/longitude arrays.
+        """
+        # Align coordinates to 0.05-degree grid
+        aligned_data = {}
+        for key, value in data.items():
+            aligned_data[key] = self._align_to_grid(value)
+        # Calculate dimensions that would be generated
+        lat_span = abs(aligned_data['n_lat'] - aligned_data['s_lat'])
+        lon_span = abs(aligned_data['e_lon'] - aligned_data['w_lon'])
+        # Calculate rows and columns (same logic as HDFSubGrid)
+        rows = int(lat_span * 20) + 1  # 0.05 deg spacing = 20 rows/degree
+        columns = int(lon_span * 20) + 1  # 0.05 deg spacing = 20 cols/degree
+        if rows <= 0 or columns <= 0:
+            raise serializers.ValidationError(
+                "Bounding box is too small. Minimum area should be at "
+                "least 0.05 degrees in each direction."
+            )
+        # Validate reasonable size limits (prevent extremely large areas)
+        if rows > 2000 or columns > 2000:
+            raise serializers.ValidationError(
+                "Bounding box is too large. Maximum dimensions are "
+                "100x100 degrees."
+            )
+        return aligned_data
+
     def validate(self, data):
-        # Validate latitude ranges
+        # Validate basic latitude ranges
         if not (-90 <= data['s_lat'] <= 90):
             raise serializers.ValidationError(
                 "South latitude must be between -90 and 90."
@@ -218,7 +254,7 @@ class BoundingBoxSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "North latitude must be between -90 and 90."
             )
-        # Validate longitude ranges
+        # Validate basic longitude ranges
         if not (-180 <= data['w_lon'] <= 180):
             raise serializers.ValidationError(
                 "West longitude must be between -180 and 180."
@@ -236,7 +272,18 @@ class BoundingBoxSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "East longitude must be greater than west longitude."
             )
-        return data
+        # Validate minimum area size
+        if abs(data['n_lat'] - data['s_lat']) < 0.05:
+            raise serializers.ValidationError(
+                "Latitude span must be at least 0.05 degrees."
+            )
+        if abs(data['e_lon'] - data['w_lon']) < 0.05:
+            raise serializers.ValidationError(
+                "Longitude span must be at least 0.05 degrees."
+            )
+        # Validate grid alignment and return aligned coordinates
+        aligned_data = self._validate_grid_alignment(data)
+        return aligned_data
 
     class Meta:
         fields = ['n_lat', 's_lat', 'w_lon', 'e_lon']
@@ -275,6 +322,28 @@ class InitialUserSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, min_length=8)
     reviewers = ReviewerSerializer(many=True, required=False)
+
+    def to_internal_value(self, data):
+        """Override to handle multipart form data for nested reviewers."""
+        # Handle reviewers field specially for multipart data
+        if hasattr(data, 'getlist') and 'reviewers' in data:
+            reviewers_list = data.getlist('reviewers')
+            reviewers_data = []
+            for reviewer_str in reviewers_list:
+                try:
+                    # Parse string representation of dict to actual dict
+                    reviewer_dict = ast.literal_eval(reviewer_str)
+                    if isinstance(reviewer_dict, dict):
+                        reviewers_data.append(reviewer_dict)
+                except (ValueError, SyntaxError):
+                    # Skip invalid entries
+                    continue
+            if reviewers_data:
+                # Create a mutable copy of data and replace reviewers
+                data_dict = dict(data.items())
+                data_dict['reviewers'] = reviewers_data
+                return super().to_internal_value(data_dict)
+        return super().to_internal_value(data)
 
     def validate_confirm_password(self, value):
         if 'password' in self.initial_data:
