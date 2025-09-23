@@ -2,7 +2,9 @@ from django.urls import re_path
 from api.v1.v1_setup.views import (
     SetupView,
     ManageSetupView,
-    OrganizationViewSet
+    OrganizationViewSet,
+    BoundingBoxView,
+    UserSetupView,
 )
 
 urlpatterns = [
@@ -32,5 +34,15 @@ urlpatterns = [
             "delete": "destroy"
         }),
         name="organization-detail",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/bbox-setup/?$",
+        BoundingBoxView.as_view(),
+        name="bbox-setup",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/user-setup/?$",
+        UserSetupView.as_view(),
+        name="user-setup",
     ),
 ]

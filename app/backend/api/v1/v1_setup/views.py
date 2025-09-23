@@ -1,4 +1,5 @@
-
+import json
+from django.conf import settings
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -9,7 +10,13 @@ from rest_framework.generics import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
 from api.v1.v1_setup.models import SiteConfig, Organization
 from api.v1.v1_setup.serializers import (
-    SetupSerializer, SetupResponseSerializer, OrganizationSerializer
+    SetupSerializer,
+    SetupResponseSerializer,
+    OrganizationSerializer,
+    BoundingBoxSerializer,
+    BoundingBoxResponseSerializer,
+    InitialUserSerializer,
+    InitialUserResponseSerializer,
 )
 from utils.custom_permissions import IsAdmin
 
@@ -84,27 +91,12 @@ class SetupView(APIView):
             # serializer
             organizations_data = []
             if hasattr(site_config, 'created_organizations'):
-                for org in site_config.created_organizations:
-                    org_data = {
-                        'id': org.id,
-                        'name': org.name,
-                        'website': org.website,
-                        'logo': org.logo.url if org.logo else None,
-                        'is_twg': org.is_twg,
-                        'is_collaborator': org.is_collaborator,
-                        'created_at': org.created_at,
-                        'updated_at': org.updated_at,
-                    }
-                    organizations_data.append(org_data)
-            response_data = {
-                'id': site_config.id,
-                'name': site_config.name,
-                'topojson_file': getattr(site_config, 'topojson_path', ''),
-                'organizations': organizations_data,
-                'message': 'Setup completed successfully.',
-                'created_at': site_config.created_at,
-                'updated_at': site_config.updated_at,
-            }
+                organizations_data = OrganizationSerializer(
+                    site_config.created_organizations,
+                    many=True
+                ).data
+            response_data = SetupResponseSerializer(site_config).data
+            response_data['organizations'] = organizations_data
 
             return Response(response_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -131,13 +123,8 @@ class SetupView(APIView):
         organizations_data = OrganizationSerializer(
             organizations, many=True
         ).data
-        response_data = {
-            'id': site_config.id,
-            'name': site_config.name,
-            'organizations': organizations_data,
-            'created_at': site_config.created_at,
-            'updated_at': site_config.updated_at,
-        }
+        response_data = SetupResponseSerializer(site_config).data
+        response_data['organizations'] = organizations_data
         return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -295,3 +282,143 @@ class OrganizationViewSet(ModelViewSet):
     )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+
+class BoundingBoxView(APIView):
+    @extend_schema(
+        responses={200: BoundingBoxResponseSerializer},
+        tags=["Setup"],
+        description="Retrieve the current bounding box.",
+    )
+    def get(self, request, *args, **kwargs):
+        """
+        Retrieve the current bounding box from
+        ./source/config/cdi_project_settings.json
+        """
+        try:
+            with open(
+                'backend/source/config/cdi_project_settings.json', 'r'
+            ) as f:
+                config = json.load(f)
+                bbox = config.get('bounds', {})
+        except (FileNotFoundError, json.JSONDecodeError):
+            bbox = {
+                "n_lat": 0.0,
+                "s_lat": 0.0,
+                "w_lon": 0.0,
+                "e_lon": 0.0
+            }
+
+        return Response(
+            {
+                'bounding_box': bbox,
+                'message': 'Bounding box retrieved successfully.'
+            },
+            status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        request=BoundingBoxSerializer,
+        responses={200: BoundingBoxResponseSerializer},
+        tags=["Setup"],
+        description="Update the bounding box.",
+    )
+    def post(self, request, *args, **kwargs):
+        """
+        Update the bounding box in ./source/config/cdi_project_settings.json.
+        """
+        serializer = BoundingBoxSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        bbox = serializer.validated_data
+        try:
+            with open(
+                './source/config/cdi_project_settings.template.json', 'r+'
+            ) as f:
+                config = json.load(f)
+                config['bounds'] = {
+                    'n_lat': bbox['n_lat'],
+                    's_lat': bbox['s_lat'],
+                    'w_lon': bbox['w_lon'],
+                    'e_lon': bbox['e_lon'],
+                }
+                f.seek(0)
+                json.dump(config, f, indent=2)
+                f.truncate()
+                json_file = "cdi_project_settings.json"
+                if settings.TEST_ENV:
+                    json_file = f"{json_file}".replace(
+                        ".json", ".test.json"
+                    )
+                with open(
+                    f'./source/config/{json_file}', 'w'
+                ) as json_file:
+                    json.dump(config, json_file, indent=2)
+        except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+            return Response(
+                {'error': f'Failed to update configuration: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        return Response(
+            {
+                'bounding_box': config['bounds'],
+                'message': 'Bounding box updated successfully.'
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class UserSetupView(APIView):
+    """
+    GET: Check if the setup has been completed.
+    POST: Create the initial admin user and reviewer Email list.
+    """
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="SetupStatusResponse",
+                fields={
+                    'is_configured': serializers.BooleanField(
+                        help_text="Indicates if setup is complete"
+                    )
+                }
+            )
+        },
+        tags=["Setup"],
+        description="Check if the setup has been completed.",
+    )
+    def get(self, request, *args, **kwargs):
+        """
+        Check if the setup has been completed.
+        """
+        is_configured = SiteConfig.objects.exists()
+        return Response(
+            {'is_configured': is_configured},
+            status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        request=InitialUserSerializer,
+        responses={201: InitialUserResponseSerializer},
+        tags=["Setup"],
+        description="Create the initial admin user and reviewer Email list.",
+    )
+    def post(self, request, *args, **kwargs):
+        """
+        Create the initial admin user and reviewer Email list.
+        """
+        serializer = InitialUserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            reviewers = serializer.validated_data.get('reviewers', [])
+            response_data = InitialUserResponseSerializer(user).data
+            response_data['reviewers'] = reviewers
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
