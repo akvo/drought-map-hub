@@ -76,5 +76,4 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: app/backend/coverage.xml
-          format: cobertura
           fail-on-error: false
