@@ -11,9 +11,9 @@ from utils.soft_deletes_model import SoftDeletes
 from utils.custom_manager import UserManager
 from api.v1.v1_users.constants import (
     UserRoleTypes,
-    TechnicalWorkingGroup,
     ActionEnum,
 )
+from api.v1.v1_setup.models import Organization
 
 
 class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
@@ -31,11 +31,12 @@ class SystemUser(AbstractBaseUser, PermissionsMixin, SoftDeletes):
     )
     reset_password_code = models.UUIDField(default=None, null=True, blank=True)
     reset_password_code_expiry = models.DateTimeField(null=True, blank=True)
-    # Add Technical working group field from Enum class
-    technical_working_group = models.IntegerField(
-        choices=TechnicalWorkingGroup.FieldStr.items(),
-        default=None,
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.SET_NULL,
         null=True,
+        blank=True,
+        related_name='users',
     )
 
     objects = UserManager()

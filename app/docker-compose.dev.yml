@@ -44,6 +44,7 @@ services:
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
       - CSRF_TRUSTED_ORIGINS
+      - SETUP_SECRET_KEY=$SETUP_SECRET_KEY
     depends_on:
       - db
       - rundeck
@@ -57,6 +58,7 @@ services:
       - WEBDOMAIN=${WEBDOMAIN}
       - SESSION_SECRET=${SESSION_SECRET}
       - GEONODE_BASE_URL=${GEONODE_BASE_URL}
+      - SETUP_SECRET_KEY=$SETUP_SECRET_KEY
     depends_on:
       - backend
   worker:

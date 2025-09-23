@@ -44,6 +44,7 @@ services:
       - EMAIL_FROM=test@example.com
       - WEBDOMAIN=notset
       - CSRF_TRUSTED_ORIGINS=https://example.com
+      - SETUP_SECRET_KEY=secret
     depends_on:
       - db
   frontend:
@@ -56,6 +57,7 @@ services:
       - WEBDOMAIN=notset
       - SESSION_SECRET=secret
       - GEONODE_BASE_URL=http://localhost
+      - SETUP_SECRET_KEY=secret
     depends_on:
       - backend
 volumes:
