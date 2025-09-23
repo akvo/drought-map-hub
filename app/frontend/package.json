@@ -16,6 +16,7 @@
     "@casl/ability": "^6.7.3",
     "@casl/react": "^5.0.0",
     "@tinymce/tinymce-react": "^5.1.1",
+    "@turf/turf": "^7.2.0",
     "antd": "^5.23.0",
     "classnames": "^2.5.1",
     "copy-webpack-plugin": "^12.0.2",
