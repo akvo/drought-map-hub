@@ -22,7 +22,12 @@ class SetupMiddleware:
         self.paths = getattr(
             settings,
             "SETUP_PROTECTED_PATHS",
-            ["/api/v1/setup", "/api/v1/manage-setup"],
+            [
+                "/api/v1/setup",
+                "/api/v1/manage-setup",
+                "/api/v1/bbox-setup",
+                "/api/v1/user-setup",
+            ],
         )
 
     def __call__(self, request):
@@ -34,9 +39,8 @@ class SetupMiddleware:
         path = request.path
         for prefix in self.paths:
             if path.startswith(prefix):
-                header_value = request.headers.get("X-Setup-Secret") or request.META.get(
-                    "HTTP_X_SETUP_SECRET"
-                )
+                header_value = request.headers.get("X-Setup-Secret") \
+                    or request.META.get("HTTP_X_SETUP_SECRET")
                 if not header_value or header_value != self.secret:
                     return JsonResponse({"detail": "Forbidden."}, status=403)
                 break
