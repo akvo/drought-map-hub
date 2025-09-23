@@ -24,87 +24,11 @@ coverage combine --rcfile=./.coveragerc
 coverage report -m --rcfile=./.coveragerc
 coverage xml --rcfile=./.coveragerc
 
-if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
-    echo "Submitting coverage to Coveralls..."
-    
-    # Debug: Show environment variables
-    echo "Environment info:"
-    echo "  GITHUB_SHA: ${GITHUB_SHA:-'not set'}"
-    echo "  GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:-'not set'}"
-    echo "  CI_COMMIT: ${CI_COMMIT:-'not set'}"
-    echo "  CI_BRANCH: ${CI_BRANCH:-'not set'}"
-    
-    # Check if we're in GitHub Actions first (preferred method)
-    if [[ -n "${GITHUB_SHA:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
-        echo "Using GitHub Actions environment for Coveralls (preferred)"
-        echo "GitHub Actions mode with:"
-        echo "  Repository: ${GITHUB_REPOSITORY}"
-        echo "  Commit SHA: ${GITHUB_SHA}"
-        echo "  Branch: ${CI_BRANCH:-main}"
-        
-        # Set environment variables that coveralls expects
-        export COVERALLS_SERVICE_NAME="github"
-        export COVERALLS_SERVICE_JOB_ID="${GITHUB_RUN_ID:-}"
-        export COVERALLS_GIT_COMMIT="${GITHUB_SHA}"
-        export COVERALLS_GIT_BRANCH="${CI_BRANCH:-main}"
-        
-        # Submit using GitHub Actions environment variables without git access
-        coveralls --service=github --rcfile=./.coveragerc && {
-            echo "✅ Successfully submitted to Coveralls with GitHub Actions!"
-        } || {
-            echo "❌ Failed to submit to Coveralls in GitHub Actions mode"
-            echo "Coverage files still generated successfully"
-        }
-    # Fallback to git context if available
-    elif git rev-parse --git-dir >/dev/null 2>&1; then
-        echo "Git repository found, using git context"
-        
-        # Configure git for Docker container environment
-        export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
-        git config --global --add safe.directory /app
-        git config --global --add safe.directory "$(pwd)"
-        git config --global --add safe.directory "*"
-        
-        # Test git access
-        echo "Testing git access..."
-        if git rev-parse HEAD >/dev/null 2>&1; then
-            echo "Git info:"
-            echo "  Current commit: $(git rev-parse HEAD)"
-            echo "  Current branch: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'HEAD')"
-            echo "  Repository root: $(git rev-parse --show-toplevel 2>/dev/null || echo '/app')"
-            
-            # Try coveralls with git context
-            coveralls --rcfile=./.coveragerc && {
-                echo "✅ Successfully submitted to Coveralls with git context!"
-            } || {
-                echo "❌ Failed with git context, trying GitHub Actions mode..."
-                # Fallback to GitHub Actions mode
-                coveralls --service=github --rcfile=./.coveragerc || {
-                    echo "❌ Failed to submit to Coveralls"
-                    echo "Coverage files still generated successfully"
-                }
-            }
-        else
-            echo "Git repository found but access failed, falling back to basic submission"
-            # Basic submission fallback
-            coveralls --rcfile=./.coveragerc || {
-                echo "❌ Failed to submit to Coveralls"
-                echo "Coverage files still generated successfully"
-            }
-        fi
-    else
-        echo "⚠️  No git or GitHub Actions environment found"
-        echo "Attempting basic submission (may fail)..."
-        coveralls --rcfile=./.coveragerc || {
-            echo "❌ Failed to submit to Coveralls - insufficient environment info"
-            echo "Coverage files generated:"
-            echo "- coverage.xml: XML format coverage report"
-            echo "- .coverage: Python coverage database"
-        }
-    fi
-else
-    echo "COVERALLS_REPO_TOKEN not set, skipping Coveralls submission"
-fi
+echo "Coverage files generated:"
+echo "- coverage.xml: XML format coverage report (for Coveralls)"
+echo "- .coverage: Python coverage database"
+echo ""
+echo "Coveralls submission will be handled by GitHub Actions if COVERALLS_REPO_TOKEN is set"
 
 echo "Generate Django DBML"
 ./manage.py dbml >> db.dbml
