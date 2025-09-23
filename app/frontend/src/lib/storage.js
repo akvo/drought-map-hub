@@ -3,7 +3,7 @@
 const set = (name, data) => {
   window.localStorage.setItem(
     window.btoa(name),
-    window.btoa(JSON.stringify(data))
+    window.btoa(JSON.stringify(data)),
   );
   return data;
 };

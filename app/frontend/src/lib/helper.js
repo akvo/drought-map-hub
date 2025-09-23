@@ -6,21 +6,21 @@ export const transformReviews = (
   administrations = [],
   reviews = [],
   users = [],
-  publication = {}
+  publication = {},
 ) => {
   return administrations
     ?.map((a) => {
       const initial_category = publication?.initial_values?.find(
-        (v) => v?.administration_id === a?.administration_id
+        (v) => v?.administration_id === a?.administration_id,
       )?.category;
       const category = publication?.validated_values?.find(
-        (v) => v?.administration_id === a?.administration_id
+        (v) => v?.administration_id === a?.administration_id,
       )?.category;
       const twgMapping = users?.reduce((acc, prev) => {
         const findCategory = reviews?.find(
           (r) =>
             r?.user_id === prev.id &&
-            r?.administration_id === a?.administration_id
+            r?.administration_id === a?.administration_id,
         );
         acc[prev.id] = findCategory?.category;
         acc[`${prev.id}_comment`] = {
@@ -77,7 +77,7 @@ export const getProfileDropdownItems = (user, isPublic = false) => {
             key: 3,
             label: "Settings",
             url: "/settings",
-          }
+          },
         ]
       : menuItems;
   return menuByRoles.map(({ key, label, url }) => ({
