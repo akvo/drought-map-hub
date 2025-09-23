@@ -6,11 +6,11 @@ from api.v1.v1_users.models import (
     SystemUser,
     Ability,
 )
+from api.v1.v1_setup.models import Organization
 from utils.custom_serializer_fields import (
     CustomCharField,
     CustomEmailField,
 )
-from .constants import TechnicalWorkingGroup
 
 
 class AbilitySerializer(serializers.ModelSerializer):
@@ -26,6 +26,7 @@ class LoginSerializer(serializers.Serializer):
 
 class UserSerializer(serializers.ModelSerializer):
     abilities = serializers.SerializerMethodField()
+    technical_working_group = serializers.SerializerMethodField()
 
     @extend_schema_field(AbilitySerializer(many=True))
     def get_abilities(self, instance):
@@ -33,6 +34,12 @@ class UserSerializer(serializers.ModelSerializer):
             role=instance.role
         ).all()
         return AbilitySerializer(_abilities, many=True).data
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_technical_working_group(self, obj):
+        if not obj.organization:
+            return None
+        return obj.organization.name
 
     class Meta:
         model = SystemUser
@@ -81,12 +88,12 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    technical_working_group = serializers.ChoiceField(
-        choices=[
-            (key, value)
-            for key, value in TechnicalWorkingGroup.FieldStr.items()
-        ],
+    organization = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.filter(
+            is_twg=True
+        ).all(),
         required=False,
+        allow_null=True,
     )
 
     class Meta:
@@ -94,7 +101,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         fields = [
             "name",
             "email",
-            "technical_working_group",
+            "organization",
         ]
 
     def update(self, instance, validated_data):
@@ -150,9 +157,9 @@ class UserReviewerSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_technical_working_group(self, obj):
-        if not obj.technical_working_group:
+        if not obj.organization:
             return None
-        return TechnicalWorkingGroup.FieldStr[obj.technical_working_group]
+        return obj.organization.name
 
     class Meta:
         model = SystemUser

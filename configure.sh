@@ -190,6 +190,7 @@ DB_PASSWORD=${POSTGRES_PASSWORD}
 DB_SCHEMA=drought_map_hub
 DB_USER=akvo
 DEBUG=False
+SETUP_SECRET_KEY=$(openssl rand -base64 16)
 EOF
 
 # Generate strong password for Rundeck

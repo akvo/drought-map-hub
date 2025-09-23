@@ -1,0 +1,26 @@
+{
+  "region_name": "Eswatini",
+  "bounds": {
+    "n_lat": 0.0,
+    "s_lat": 0.0,
+    "w_lon": 0.0,
+    "e_lon": 0.0
+  },
+  "spi_periods": [3],
+  "cdi_parameters": {
+    "names": {
+      "lst": "lst_anom_pct_rank",
+      "ndvi": "ndvi_anom_pct_rank",
+      "spi": "spi_3_anom_pct_rank",
+      "sm": "RootZone2_SM_pct_rank"
+    },
+    "weights": {
+      "lst": 0.3,
+      "ndvi": 0.3,
+      "spi": 0.4,
+      "sm": 0.0
+    }
+  },
+  "map_template": "dmh_template.qpt",
+  "map_project": "dmh_CDI.qgs"
+}

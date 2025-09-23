@@ -11,3 +11,4 @@ db.dbml
 **/realm.properties
 rundeck.env.*
 realm.properties.backup.*
+country-test.topojson

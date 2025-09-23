@@ -49,6 +49,7 @@ API_APPS = [
     "api.v1.v1_users",
     "api.v1.v1_publication",
     "api.v1.v1_rundeck",
+    "api.v1.v1_setup",
 ]
 
 # Add third party apps below
@@ -71,6 +72,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "utils.custom_middleware.SetupMiddleware",
 ]
 
 ROOT_URLCONF = "drought_map_hub.urls"
@@ -220,3 +222,14 @@ DEFAULT_FROM_EMAIL = EMAIL_FROM
 WEBDOMAIN = environ.get("WEBDOMAIN", "http://localhost:3000")
 TEST_ENV = environ.get("TEST_ENV") or False
 CSRF_TRUSTED_ORIGINS = environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+SETUP_SECRET_KEY = environ.get("SETUP_SECRET_KEY")
+
+
+# Image upload settings
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path.joinpath(BASE_DIR, "media")
+# Custom settings for organization logo
+ORGANIZATION_LOGO_UPLOAD_PATH = "organization_logos/"
+ORGANIZATION_LOGO_MAX_SIZE = 2 * 1024 * 1024  # 2MB
+ORGANIZATION_LOGO_ALLOWED_TYPES = ["image/jpeg", "image/png"]
+ORGANIZATION_LOGO_ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png"]

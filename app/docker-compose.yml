@@ -30,6 +30,33 @@ services:
     env_file: "./.env"
     restart: unless-stopped
     working_dir: /app
+    command: ["./start.sh"]
+    volumes:
+      - ./backend:/app:delegated
+    environment:
+      - DB_SCHEMA=$DB_SCHEMA
+      - DB_USER=$DB_USER
+      - DB_PASSWORD=$DB_PASSWORD
+      - DB_HOST=$DB_HOST
+      - DEBUG=$DEBUG
+      - SECRET_KEY=$SECRET_KEY
+      - GEONODE_BASE_URL=$GEONODE_BASE_URL
+      - GEONODE_ADMIN_USERNAME=$GEONODE_ADMIN_USERNAME
+      - GEONODE_ADMIN_PASSWORD=$GEONODE_ADMIN_PASSWORD
+      - RUNDECK_API_URL=$RUNDECK_API_URL
+      - RUNDECK_API_TOKEN=$RUNDECK_API_TOKEN
+      - COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN:-}
+      - EMAIL_HOST=$EMAIL_HOST
+      - EMAIL_PORT=$EMAIL_PORT
+      - EMAIL_USE_TLS=$EMAIL_USE_TLS
+      - EMAIL_HOST_USER=$EMAIL_HOST_USER
+      - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
+      - EMAIL_FROM=$EMAIL_FROM
+      - WEBDOMAIN=$WEBDOMAIN
+      - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
+      - SETUP_SECRET_KEY=$SETUP_SECRET_KEY
+    ports:
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -41,7 +68,13 @@ services:
     env_file: "./.env"
     restart: unless-stopped
     working_dir: /app
-    network_mode: service:mainnetwork
+    environment:
+      - WEBDOMAIN=${WEBDOMAIN}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - GEONODE_BASE_URL=${GEONODE_BASE_URL}
+      - SETUP_SECRET_KEY=$SETUP_SECRET_KEY
+    ports:
+      - "3000:3000"
     depends_on:
       - backend
   worker:

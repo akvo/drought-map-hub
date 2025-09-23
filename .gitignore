@@ -4,3 +4,4 @@ geonode/.env
 traefik/.env
 .env.backup.*
 cdi_project_settings.json.backup.*
+test_install.exp
