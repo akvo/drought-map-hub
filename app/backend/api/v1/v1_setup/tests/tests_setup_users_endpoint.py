@@ -80,6 +80,56 @@ class SetupUsersAPITest(APITestCase):
                 reviewer_data["organization_id"]
             )
 
+    def test_successful_user_setup_with_form_data(self):
+        """Test successful user setup with multipart/form-data."""
+        form_data = {
+            "name": "testuser",
+            "email": "testuser@example.com",
+            "password": "testpass123",
+            "confirm_password": "testpass123",
+            "reviewers": [
+                {
+                    "email": "reviewer@org1.example.com",
+                    "name": "Reviewer One",
+                    "organization_id": self.org_1.id
+                },
+                {
+                    "email": "reviewer@org2.example.com",
+                    "name": "Reviewer Two",
+                    "organization_id": self.org_2.id
+                }
+            ]
+        }
+        response = self.client.post(self.url, form_data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(
+            list(data.keys()),
+            ['name', 'email', 'reviewers']
+        )
+        # Verify admin user was created
+        admin_user = SystemUser.objects.filter(
+            email=form_data["email"],
+            role=UserRoleTypes.admin
+        ).first()
+        self.assertIsNotNone(admin_user, "Admin user should be created")
+        self.assertEqual(admin_user.name, form_data["name"])
+        # Verify reviewers were created
+        for reviewer_data in form_data["reviewers"]:
+            reviewer = SystemUser.objects.filter(
+                email=reviewer_data["email"],
+                role=UserRoleTypes.reviewer
+            ).first()
+            self.assertIsNotNone(
+                reviewer,
+                f"Reviewer {reviewer_data['email']} should be created"
+            )
+            self.assertEqual(reviewer.name, reviewer_data["name"])
+            self.assertEqual(
+                reviewer.organization_id,
+                reviewer_data["organization_id"]
+            )
+
     def test_user_setup_without_authentication(self):
         """Test user setup without proper authentication header."""
         self.client.credentials()  # Remove authentication
