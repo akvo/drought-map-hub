@@ -43,14 +43,14 @@ class SetupAppAPITest(APITestCase):
         data["organizations[0][is_twg]"] = "true"
         data["organizations[0][is_collaborator]"] = "false"
         # Skip logo for now due to image format issues
-        # data["organizations[0][logo]"] = self.org_image_1.open("rb")
+        data["organizations[0][logo]"] = self.org_image_1.open("rb")
 
         data["organizations[1][name]"] = "Organization 2"
         data["organizations[1][website]"] = "https://www.organization2.com"
         data["organizations[1][is_twg]"] = "false"
         data["organizations[1][is_collaborator]"] = "true"
         # Skip logo for now due to image format issues
-        # data["organizations[1][logo]"] = self.org_image_2.open("rb")
+        data["organizations[1][logo]"] = self.org_image_2.open("rb")
         response = self.client.post(
             url,
             data,
@@ -58,25 +58,26 @@ class SetupAppAPITest(APITestCase):
             HTTP_X_SETUP_SECRET="test-secret-key",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("message", response.data)
-        self.assertEqual(
-            response.data["message"], "Setup completed successfully."
-        )
         # Verify that file uploads are handled correctly
-        self.assertIn("topojson_file", response.data)
-        self.assertTrue(
-            response.data["topojson_file"].endswith("country-test.topojson")
+        self.assertIn("geojson_file", response.data)
+        self.assertEqual(
+            response.data["geojson_file"],
+            "administrations.geojson"
         )
+
         self.assertIn("organizations", response.data)
         self.assertEqual(len(response.data["organizations"]), 2)
-        # Skip logo checks for now due to image format issues
-        # for org in response.data["organizations"]:
-        #     self.assertIn("logo", org)
-        #     self.assertTrue(org["logo"].startswith("/media/"))
+
+        for org in response.data["organizations"]:
+            self.assertIn("logo", org)
+            self.assertTrue(org["logo"].startswith("/media/"))
         # Close the opened files
         data["geojson_file"].close()
-        # data["organizations[0][logo]"].close()
-        # data["organizations[1][logo]"].close()
+        data["organizations[0][logo]"].close()
+        data["organizations[1][logo]"].close()
+
+        # Verify uuid is returned
+        self.assertIn("uuid", response.data)
 
         # Verify that the SiteConfig and Organizations
         # are created in the database
@@ -266,7 +267,12 @@ class SetupAppAPITest(APITestCase):
         # Missing: data["organizations[0][name]"]
         # Also skipping logo due to image format issues
         # data["organizations[0][logo]"] = self.org_image_1.open("rb")
-        response = self.client.post(url, data, format="multipart")
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key"
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Response should show error message for the missing name
