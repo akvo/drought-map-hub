@@ -4,6 +4,7 @@ from django.db import models
 class SiteConfig(models.Model):
     uuid = models.CharField(max_length=36, unique=True)
     name = models.CharField(max_length=255)
+    geojson_file = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
