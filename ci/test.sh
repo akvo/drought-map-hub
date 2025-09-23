@@ -29,7 +29,7 @@ if [[ "${CI_TAG}" =~ $tag_pattern || "${CI_BRANCH}" == "main" && "${CI_PULL_REQU
 fi
 
 frontend_test() {
-    docker compose -f docker-compose.test.yml run \
+    docker compose -f app/docker-compose.test.yml run \
         --rm \
         --no-deps \
         frontend \
@@ -40,13 +40,13 @@ update_dbdocs() {
     if [[ "${CI_BRANCH}" == "main" ]]; then
         npm install -g dbdocs
         # dbdocs build doc/dbml/schema.dbml --project drought_map_hub
-        dbdocs build backend/db.dbml --project "drought_map_hub-droughtmap-hub"
+        dbdocs build app/backend/db.dbml --project "droughtmap-hub"
     fi
 }
 
 backend_test() {
     docker compose \
-        -f docker-compose.test.yml \
+        -f app/docker-compose.test.yml \
         run -T backend ./test.sh
 }
 
