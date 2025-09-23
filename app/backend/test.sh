@@ -24,11 +24,11 @@ coverage combine --rcfile=./.coveragerc
 coverage report -m --rcfile=./.coveragerc
 coverage xml --rcfile=./.coveragerc
 
-echo "Coverage files generated:"
-echo "- coverage.xml: XML format coverage report (for Coveralls)"
-echo "- .coverage: Python coverage database"
-echo ""
-echo "Coveralls submission will be handled by GitHub Actions if COVERALLS_REPO_TOKEN is set"
+if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
+    export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
+    git config --global --add safe.directory /app
+    coveralls
+fi
 
 echo "Generate Django DBML"
 ./manage.py dbml >> db.dbml
