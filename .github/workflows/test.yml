@@ -1,0 +1,59 @@
+name: Test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      - feature/**
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set short git commit SHA
+        id: vars
+        run: |
+          shortSha=$(git rev-parse --short ${{ github.sha }})
+          echo "COMMIT_SHORT_SHA=$shortSha" >> $GITHUB_ENV
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+
+      - name: List all changed files
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          for file in "$ALL_CHANGED_FILES"; do
+            echo "$file was changed"
+          done
+
+      - name: Detect event type
+        run: |
+          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
+              echo "PULL_REQUEST_EVENT=true" >> $GITHUB_ENV
+          else
+              echo "PULL_REQUEST_EVENT=false" >> $GITHUB_ENV
+          fi
+
+      - name: Test
+        env:
+          CI_COMMIT: ${{ env.COMMIT_SHORT_SHA }}
+          CI_BRANCH: ${{ github.ref_name }}
+          CI_TAG: ""
+          CI_PULL_REQUEST: ${{ env.PULL_REQUEST_EVENT }}
+          COMPOSE_INTERACTIVE_NO_CLI: 1
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          DBDOCS_TOKEN: ${{ secrets.DBDOCS_TOKEN }}
+          WEBDOMAIN: ${{ secrets.WEBDOMAIN }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          ./ci/test.sh
