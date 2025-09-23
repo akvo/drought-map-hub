@@ -26,7 +26,7 @@ export default async function middleware(request) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-      }
+      },
     );
     if (!req.ok) {
       response.cookies.set({
