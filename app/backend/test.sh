@@ -19,24 +19,27 @@ coverage report -m --rcfile=./.coveragerc
 coverage xml --rcfile=./.coveragerc
 
 if [[ -n "${COVERALLS_REPO_TOKEN:-}" ]]; then
-    echo "Attempting to submit coverage to coveralls..."
+    echo "Submitting coverage to Coveralls..."
 
-    # Check if we're in a git repository
+    # Check if we have git context, if not, use GitHub Actions environment
     if git rev-parse --git-dir >/dev/null 2>&1; then
-        echo "Git repository found, submitting to coveralls"
+        echo "Git repository found, using git context"
         export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
         git config --global --add safe.directory /app
-        coveralls
+        coveralls --rcfile=./.coveragerc
+    elif [[ -n "${GITHUB_SHA:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
+        echo "Using GitHub Actions environment for Coveralls"
+        # Submit using GitHub Actions environment variables
+        coveralls --service=github --rcfile=./.coveragerc
     else
-        echo "Warning: Not in a git repository (running in Docker container)."
-        echo "Skipping coveralls submission."
-        echo "Coverage reports have been generated successfully and are available above."
-        echo ""
-        echo "To submit coverage manually, run coveralls from the host system"
-        echo "where the git repository is available."
+        echo "No git or GitHub Actions environment found, attempting basic submission"
+        coveralls --rcfile=./.coveragerc || {
+            echo "Failed to submit to Coveralls - no git context available"
+            echo "Coverage files generated:"
+            echo "- coverage.xml: XML format coverage report"
+            echo "- .coverage: Python coverage database"
+        }
     fi
-else
-    echo "COVERALLS_REPO_TOKEN not set, skipping coveralls submission"
 fi
 
 echo "Generate Django DBML"

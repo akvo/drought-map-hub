@@ -23,6 +23,11 @@ jobs:
           shortSha=$(git rev-parse --short ${{ github.sha }})
           echo "COMMIT_SHORT_SHA=$shortSha" >> $GITHUB_ENV
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v41
@@ -52,6 +57,13 @@ jobs:
           COMPOSE_INTERACTIVE_NO_CLI: 1
           ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
           DBDOCS_TOKEN: ${{ secrets.DBDOCS_TOKEN }}
           WEBDOMAIN: ${{ secrets.WEBDOMAIN }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}

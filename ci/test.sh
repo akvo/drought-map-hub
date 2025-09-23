@@ -45,6 +45,7 @@ update_dbdocs() {
 }
 
 backend_test() {
+    echo "================== * RUNNING BACKEND TESTS * =================="
     docker compose \
         -f app/docker-compose.test.yml \
         run -T backend ./test.sh
