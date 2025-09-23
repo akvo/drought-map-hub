@@ -51,7 +51,7 @@ const ValidationPage = ({ params }) => {
     const total = publication?.initial_values?.length || 0;
     const validated =
       publication?.validated_values?.filter(
-        (v) => v?.category || v?.category === 0
+        (v) => v?.category || v?.category === 0,
       )?.length || 0;
     return [validated, total];
   }, [publication]);
@@ -60,7 +60,7 @@ const ValidationPage = ({ params }) => {
     try {
       const { validated_values, reviews, users } = await api(
         "GET",
-        `/admin/publication-reviews/${params.id}?non_disputed=${nonDisputed}&non_validated=${nonValidated}`
+        `/admin/publication-reviews/${params.id}?non_disputed=${nonDisputed}&non_validated=${nonValidated}`,
       );
       const _dataSource = transformReviews(administrations, reviews, users, {
         ...publication,
@@ -95,14 +95,14 @@ const ValidationPage = ({ params }) => {
         const payload = {
           validated_values: administrations?.map(({ administration_id }) => {
             const fd = currentValues?.find(
-              (v) => v?.administration_id === administration_id
+              (v) => v?.administration_id === administration_id,
             );
             const category =
               administration_id === admID
                 ? val
                 : fd?.category === undefined
-                ? null
-                : fd?.category;
+                  ? null
+                  : fd?.category;
             return {
               category,
               administration_id,
@@ -112,7 +112,7 @@ const ValidationPage = ({ params }) => {
         const { validated_values } = await api(
           "PUT",
           `/admin/publication/${params?.id}`,
-          payload
+          payload,
         );
         if (activeTab === "map") {
           onRefreshMap();
@@ -125,14 +125,14 @@ const ValidationPage = ({ params }) => {
           });
           const ds = dataSource?.map((d) => {
             const fd = validated_values?.find(
-              (v) => v?.administration_id === d?.administration_id
+              (v) => v?.administration_id === d?.administration_id,
             );
             const category =
               d?.administration_id === admID
                 ? val
                 : fd?.category === undefined
-                ? d?.category
-                : fd?.category;
+                  ? d?.category
+                  : fd?.category;
             return {
               ...d,
               category,
@@ -151,7 +151,7 @@ const ValidationPage = ({ params }) => {
       publication,
       onRefreshMap,
       params?.id,
-    ]
+    ],
   );
 
   const onNonDisputed = (isChecked = false) => {
@@ -186,7 +186,7 @@ const ValidationPage = ({ params }) => {
       const payload = {
         validated_values: administrations?.map(({ administration_id }) => {
           const findData = dataSource?.find(
-            (d) => d?.administration_id === administration_id
+            (d) => d?.administration_id === administration_id,
           );
           const category =
             findData?.category === undefined ? null : findData?.category;
@@ -207,7 +207,7 @@ const ValidationPage = ({ params }) => {
       const { validated_values } = await api(
         "PUT",
         `/admin/publication/${params?.id}`,
-        payload
+        payload,
       );
       if (validated_values) {
         setPublication({
@@ -216,7 +216,7 @@ const ValidationPage = ({ params }) => {
         });
         const ds = dataSource?.map((d) => {
           const fd = validated_values.find(
-            (v) => v?.administration_id === d?.administration_id
+            (v) => v?.administration_id === d?.administration_id,
           );
           const category =
             fd?.category === undefined ? d?.category : fd?.category;
@@ -246,7 +246,7 @@ const ValidationPage = ({ params }) => {
       setPublication(apiData);
       const { reviews, users } = await api(
         "GET",
-        `/admin/publication-reviews/${params.id}`
+        `/admin/publication-reviews/${params.id}`,
       );
       setDataSource(transformReviews(administrations, reviews, users, apiData));
       setExtraColumns(
@@ -255,7 +255,7 @@ const ValidationPage = ({ params }) => {
           dataIndex: r?.id,
           render: (value) => DROUGHT_CATEGORY_LABEL?.[value],
           width: 192,
-        }))
+        })),
       );
       setLoading(false);
     } catch (err) {

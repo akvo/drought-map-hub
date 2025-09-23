@@ -60,7 +60,7 @@ const ReviewsPage = () => {
         setLoading(true);
         const { data, total } = await api(
           "GET",
-          `/reviewer/reviews?page=${page}`
+          `/reviewer/reviews?page=${page}`,
         );
         setTotalData(total);
         const _reviews = data.map((d) => ({ key: d?.id, ...d }));

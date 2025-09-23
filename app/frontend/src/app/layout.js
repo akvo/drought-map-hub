@@ -25,7 +25,7 @@ export default function RootLayout({ children }) {
           "antialiased",
           inter.variable,
           roboto.variable,
-          robotoMono.variable
+          robotoMono.variable,
         )}
       >
         <AppContextProvider>

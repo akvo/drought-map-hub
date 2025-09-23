@@ -43,7 +43,7 @@ const IframeMapPage = ({ searchParams }) => {
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     return {
       fillColor: DROUGHT_CATEGORY_COLOR?.[findAdm?.category] || "white",

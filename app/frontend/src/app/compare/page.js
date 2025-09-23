@@ -1,4 +1,9 @@
-import { CompareMapForm, FeedbackSection, LogoSection, Navbar } from "@/components";
+import {
+  CompareMapForm,
+  FeedbackSection,
+  LogoSection,
+  Navbar,
+} from "@/components";
 import { api, auth } from "@/lib";
 import { APP_SETTINGS } from "@/static/config";
 import dynamic from "next/dynamic";
@@ -7,7 +12,7 @@ const ComparisonSlider = dynamic(
   () => import("@/components/ComparisonSlider"),
   {
     ssr: false,
-  }
+  },
 );
 
 const ComparePage = async ({ searchParams }) => {

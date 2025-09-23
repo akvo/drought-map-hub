@@ -21,7 +21,7 @@ const ResetPasswordPage = ({ searchParams }) => {
     try {
       const { message: res } = await api(
         "GET",
-        `/auth/verify-password-code?code=${code}`
+        `/auth/verify-password-code?code=${code}`,
       );
 
       if (res === "OK") {

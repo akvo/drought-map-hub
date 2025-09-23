@@ -81,7 +81,7 @@ const PublicationsPage = () => {
       key: "status",
       render: (_, { status }) => {
         const findStatus = PUBLICATION_STATUS_OPTIONS.find(
-          (s) => s?.value === status
+          (s) => s?.value === status,
         );
         return (
           <Tag color={findStatus?.color}>

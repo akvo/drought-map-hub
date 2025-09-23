@@ -6,7 +6,7 @@ import { Divider } from "antd";
 
 const PublicationMap = dynamic(
   () => import("@/components/Map/PublicationMap"),
-  { ssr: false }
+  { ssr: false },
 );
 
 const PublicationDetailsPage = async ({ params }) => {

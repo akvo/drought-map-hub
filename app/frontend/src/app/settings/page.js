@@ -159,7 +159,7 @@ const SettingsPage = () => {
       const { message: resMessage, ...apiData } = await api(
         "PUT",
         `/admin/setting/${settings.id}`,
-        payload
+        payload,
       );
       if (resMessage) {
         message.warning(resMessage);
@@ -229,7 +229,7 @@ const SettingsPage = () => {
         const _projects = await api("GET", "/rundeck/projects");
         if (_projects?.length) {
           setProjects(
-            _projects.map(({ label, name: value }) => ({ value, label }))
+            _projects.map(({ label, name: value }) => ({ value, label })),
           );
         }
         const { contacts: _admins } = await api("GET", "/admin/contacts");
@@ -245,7 +245,7 @@ const SettingsPage = () => {
           });
           const { data: _execList } = await api(
             "GET",
-            `/rundeck/job/${_settings[0]?.job_id}/execs`
+            `/rundeck/job/${_settings[0]?.job_id}/execs`,
           );
           if (_execList?.length) {
             setExecList(_execList);
@@ -267,7 +267,7 @@ const SettingsPage = () => {
         setJobChecking(false);
         const { data: _execList } = await api(
           "GET",
-          `/rundeck/job/${settings?.job_id}/execs`
+          `/rundeck/job/${settings?.job_id}/execs`,
         );
         if (_execList?.length) {
           setExecList(_execList);
@@ -481,7 +481,7 @@ const SettingsPage = () => {
                     onClick={() => {
                       window.open(
                         `/rundeck/project/${settings?.project_name}/home`,
-                        "_blank"
+                        "_blank",
                       );
                     }}
                     ghost

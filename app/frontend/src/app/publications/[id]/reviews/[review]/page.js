@@ -18,7 +18,7 @@ const PublicationReviewPage = async ({ params }) => {
     redirect("/publications");
   }
   const yearMonth = dayjs(review?.publication?.year_month, "YYYY-MM").format(
-    "MMMM YYYY"
+    "MMMM YYYY",
   );
   return (
     <div className="w-full min-h-screen">

@@ -9,7 +9,7 @@ const ReviewerMap = dynamic(
   () => import("../../../components/Map/ReviewerMap"),
   {
     ssr: false,
-  }
+  },
 );
 
 const ReviewDetailsPage = async ({ params }) => {
@@ -24,7 +24,7 @@ const ReviewDetailsPage = async ({ params }) => {
       if (review?.suggestion_values?.length) {
         const suggestion =
           review?.suggestion_values?.find(
-            (s) => s?.administration_id === v?.administration_id
+            (s) => s?.administration_id === v?.administration_id,
           ) || {};
         return {
           ...v,
@@ -42,7 +42,7 @@ const ReviewDetailsPage = async ({ params }) => {
           raw: category,
         },
       };
-    }
+    },
   );
   return (
     <div className="w-full min-h-screen">
@@ -65,7 +65,7 @@ const ReviewDetailsPage = async ({ params }) => {
             <strong>Review Completed</strong>
             <br />
             <small>{` at ${dayjs(review?.completed_at).format(
-              "DD/MM/YYYY h:mm A"
+              "DD/MM/YYYY h:mm A",
             )}`}</small>
           </div>
         )}

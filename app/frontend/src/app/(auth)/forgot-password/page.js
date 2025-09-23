@@ -22,7 +22,7 @@ const ForgotPasswordPage = () => {
       const { message: res } = await api(
         "POST",
         "/auth/forgot-password",
-        values
+        values,
       );
       if (res === "OK") {
         setSuccess(true);
