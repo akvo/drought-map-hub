@@ -1,4 +1,6 @@
 import json
+import os
+import shutil
 from django.conf import settings
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -284,6 +286,46 @@ class OrganizationViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+# Align bounds to HDF grid system (0.05-degree spacing)
+# HDF grid: longitude starts at -179.975°, latitude starts at 89.975°
+def align_to_hdf_grid(value, is_longitude=True, is_upper_bound=True):
+    """
+    Align coordinate to HDF grid system.
+    HDF uses 0.05° spacing:
+    - Longitude: -179.975, -179.925, -179.875, ...
+    - Latitude: 89.975, 89.925, 89.875, ...
+    """
+    if is_longitude:
+        # For longitude: base is -179.975
+        base = -179.975
+    else:
+        # For latitude: base is 89.975, descending values
+        base = 89.975
+    # Calculate grid index
+    if is_longitude:
+        grid_index = round((value - base) / 0.05)
+    else:
+        # For latitude, calculate from the top (89.975)
+        grid_index = round((base - value) / 0.05)
+    # Calculate aligned value
+    if is_longitude:
+        aligned = base + (grid_index * 0.05)
+    else:
+        aligned = base - (grid_index * 0.05)
+    # For bounds expansion, move to next grid point if needed
+    if is_upper_bound:
+        if is_longitude and aligned < value:
+            aligned += 0.05
+        elif not is_longitude and aligned < value:
+            aligned -= 0.05
+    else:
+        if is_longitude and aligned > value:
+            aligned -= 0.05
+        elif not is_longitude and aligned > value:
+            aligned += 0.05
+    return round(aligned, 3)
+
+
 class BoundingBoxView(APIView):
     @extend_schema(
         responses={200: BoundingBoxResponseSerializer},
@@ -295,10 +337,12 @@ class BoundingBoxView(APIView):
         Retrieve the current bounding box from
         ./source/config/cdi_project_settings.json
         """
+        config_file = 'cdi_project_settings.json'
+        if settings.TEST_ENV:
+            config_file = 'cdi_project_settings.test.json'
+        config_path = f'./source/config/{config_file}'
         try:
-            with open(
-                'backend/source/config/cdi_project_settings.json', 'r'
-            ) as f:
+            with open(config_path, 'r') as f:
                 config = json.load(f)
                 bbox = config.get('bounds', {})
         except (FileNotFoundError, json.JSONDecodeError):
@@ -325,46 +369,60 @@ class BoundingBoxView(APIView):
     )
     def post(self, request, *args, **kwargs):
         """
-        Update the bounding box in ./source/config/cdi_project_settings.json.
+        Update the bounding box using the improved BoundingBoxSerializer.
         """
         serializer = BoundingBoxSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST
             )
-
-        bbox = serializer.validated_data
-        try:
-            with open(
-                './source/config/cdi_project_settings.template.json', 'r+'
-            ) as f:
-                config = json.load(f)
-                config['bounds'] = {
-                    'n_lat': bbox['n_lat'],
-                    's_lat': bbox['s_lat'],
-                    'w_lon': bbox['w_lon'],
-                    'e_lon': bbox['e_lon'],
-                }
-                f.seek(0)
-                json.dump(config, f, indent=2)
-                f.truncate()
-                json_file = "cdi_project_settings.json"
-                if settings.TEST_ENV:
-                    json_file = f"{json_file}".replace(
-                        ".json", ".test.json"
-                    )
-                with open(
-                    f'./source/config/{json_file}', 'w'
-                ) as json_file:
-                    json.dump(config, json_file, indent=2)
-        except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
-            return Response(
-                {'error': f'Failed to update configuration: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        # Path to the CDI project settings files
+        template_path = './source/config/cdi_project_settings.template.json'
+        config_path = './source/config/cdi_project_settings.json'
+        if settings.TEST_ENV:
+            config_path = './source/config/cdi_project_settings.test.json'
+        # If main config doesn't exist, copy from template
+        if not os.path.exists(config_path):
+            # Copy template to create main config file
+            shutil.copy2(template_path, config_path)
+        # Read the config file (now guaranteed to exist)
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        bounds_data = serializer.validated_data
+        # Align bounds to HDF grid and expand slightly for coverage
+        aligned_bounds = {
+            "n_lat": align_to_hdf_grid(
+                float(bounds_data["n_lat"]),
+                is_longitude=False,
+                is_upper_bound=True
+            ),
+            "s_lat": align_to_hdf_grid(
+                float(bounds_data["s_lat"]),
+                is_longitude=False,
+                is_upper_bound=False
+            ),
+            "w_lon": align_to_hdf_grid(
+                float(bounds_data["w_lon"]),
+                is_longitude=True,
+                is_upper_bound=False
+            ),
+            "e_lon": align_to_hdf_grid(
+                float(bounds_data["e_lon"]),
+                is_longitude=True,
+                is_upper_bound=True
             )
+        }
+        config['bounds'] = aligned_bounds
+        # Update region name if provided
+        # if region_name:
+        #     config['region_name'] = region_name
+        # Write updated config back to main file (not template)
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        updated_bounds = config['bounds']
         return Response(
             {
-                'bounding_box': config['bounds'],
+                'bounding_box': updated_bounds,
                 'message': 'Bounding box updated successfully.'
             },
             status=status.HTTP_200_OK
