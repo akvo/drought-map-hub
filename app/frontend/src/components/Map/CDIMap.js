@@ -13,7 +13,6 @@ import {
 import { useAppContext } from "@/context/AppContextProvider";
 import { Flex, Spin } from "antd";
 import CDIMapLegend from "./CDIMapLegend";
-import GetCoordinates from "./GetCoordinates";
 
 const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
   const map = useMap();
@@ -48,19 +47,11 @@ const CDIMap = ({
   const appContext = useAppContext();
   const geoData = appContext?.geoData || window?.topojson;
 
-  const onEachFeature = (feature, layer, currentMap) => {
+  const onEachFeature = (feature, layer) => {
     const { fillColor, weight, color } =
       typeof onFeature === "function" ? onFeature(feature) : {};
-    // const shape = new L.PatternCircle({
-    //   ...dotShapeOptions,
-    //   fillColor: fillColor || dotShapeOptions?.fillColor,
-    // });
-    // const pattern = new L.Pattern(patternOptions);
-    // pattern.addShape(shape);
-    // pattern.addTo(currentMap);
     layer.setStyle({
       ...styleOptions,
-      // fillPattern: pattern,
       fillColor: fillColor || dotShapeOptions?.fillColor,
       weight: weight || styleOptions?.weight,
       color: color || styleOptions?.color,

@@ -26,7 +26,7 @@ const ReviewedMap = ({ data = [], review = {} }) => {
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     return {
       fillColor: DROUGHT_CATEGORY_COLOR?.[findAdm?.category],
@@ -35,7 +35,7 @@ const ReviewedMap = ({ data = [], review = {} }) => {
 
   const onClick = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     // if (findAdm?.category === DROUGHT_CATEGORY_VALUE.none) {
     //   return;

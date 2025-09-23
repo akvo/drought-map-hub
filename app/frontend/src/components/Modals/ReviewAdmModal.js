@@ -154,8 +154,8 @@ const ReviewAdmModal = ({ review }) => {
                 {activeAdm?.reviewed
                   ? "Edit"
                   : showSuggestion
-                  ? "Cancel"
-                  : "Suggest new value"}
+                    ? "Cancel"
+                    : "Suggest new value"}
               </Button>
             )}
 
@@ -188,8 +188,8 @@ const ReviewAdmModal = ({ review }) => {
               {activeAdm?.reviewed
                 ? "OK"
                 : showSuggestion
-                ? "Suggest New Value"
-                : "Approve Computed Value"}
+                  ? "Suggest New Value"
+                  : "Approve Computed Value"}
             </Button>
           </Flex>
         }
@@ -234,7 +234,7 @@ const ReviewAdmModal = ({ review }) => {
                   <Select
                     options={DROUGHT_CATEGORY.slice(
                       0,
-                      DROUGHT_CATEGORY.length - 1
+                      DROUGHT_CATEGORY.length - 1,
                     )}
                     placeholder="Select Drought category"
                     disabled={activeAdm?.reviewed}

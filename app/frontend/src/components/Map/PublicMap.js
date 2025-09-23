@@ -31,7 +31,7 @@ const PublicMap = ({ id, validated_values: data = [], bulletin_url }) => {
         `/api/v1/map/${id}/export?export_type=${export_type}`,
         {
           method: "GET",
-        }
+        },
       );
       if (response.status === 200) {
         const res = await response.blob();
@@ -64,7 +64,7 @@ const PublicMap = ({ id, validated_values: data = [], bulletin_url }) => {
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     return {
       fillColor: DROUGHT_CATEGORY_COLOR?.[findAdm?.category],
@@ -73,7 +73,7 @@ const PublicMap = ({ id, validated_values: data = [], bulletin_url }) => {
 
   const onClick = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     Modal.info({
       title: feature?.properties?.name,

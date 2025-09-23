@@ -18,7 +18,7 @@ const NavItem = ({ pathname, url, label }) => {
             "bg-rose-800 hover:bg-rose-900 ring-b ring-b-white":
               pathname === url,
             "hover:bg-rose-800": pathname !== url,
-          }
+          },
         )}
       >
         {label}

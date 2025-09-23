@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import SelectDate from "../SelectDate";
 
-
 const CompareMapForm = ({ dates = [], searchParams }) => {
   const [leftOptions, setLeftOptions] = useState(dates);
   const [rightOptions, setRightOptions] = useState(dates);

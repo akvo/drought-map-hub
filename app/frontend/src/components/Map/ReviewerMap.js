@@ -56,14 +56,14 @@ const ReviewerMap = ({ data = [] }) => {
 
   const mapStyle = (feature) => {
     const isSelected = selectedAdms.includes(
-      feature?.properties?.administration_id
+      feature?.properties?.administration_id,
     );
     const isHighighted =
       isBulkAction ||
       isSelected ||
       feature?.properties?.administration_id === activeAdm?.administration_id;
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     return {
       opacity: isHighighted ? 1 : styleOptions?.opacity,
@@ -75,7 +75,7 @@ const ReviewerMap = ({ data = [] }) => {
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     const category = findAdm?.reviewed
       ? findAdm?.category?.[valueType]
@@ -89,7 +89,7 @@ const ReviewerMap = ({ data = [] }) => {
 
   const onClick = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     // if (findAdm?.category?.raw === DROUGHT_CATEGORY_VALUE.none) {
     //   return;

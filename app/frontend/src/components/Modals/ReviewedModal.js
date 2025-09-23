@@ -18,7 +18,7 @@ const ReviewedModal = ({ initial_values = [] }) => {
       return [];
     }
     const findAdm = initial_values?.find(
-      (v) => v?.administration_id === activeAdm?.administration_id
+      (v) => v?.administration_id === activeAdm?.administration_id,
     );
     return [
       {

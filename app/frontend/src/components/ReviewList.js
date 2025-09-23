@@ -40,7 +40,7 @@ const mergeData = (administrations, dataSource) => {
       };
     })
     ?.sort((a, b) =>
-      a?.name?.toLowerCase()?.localeCompare(b?.name?.toLowerCase())
+      a?.name?.toLowerCase()?.localeCompare(b?.name?.toLowerCase()),
     );
 };
 
@@ -181,7 +181,7 @@ const ReviewList = ({
     if (refreshMap) {
       form.setFieldValue(
         "administrations",
-        mergeData(administrations, dataSource)
+        mergeData(administrations, dataSource),
       );
     }
   }, [appDispatch, refreshMap, form, administrations, dataSource]);
@@ -273,7 +273,7 @@ const ReviewList = ({
                               "w-full flex flex-row flex-wrap items-center justify-between px-4 py-2 border-b border-neutral-200",
                               {
                                 "bg-neutral-100": isReviewed,
-                              }
+                              },
                             )}
                             key={field.key}
                           >
@@ -291,7 +291,7 @@ const ReviewList = ({
                                           "administrations",
                                           field.name,
                                           "administration_id",
-                                        ])
+                                        ]),
                                       )
                                     }
                                     disabled={isDisabled}
@@ -304,7 +304,7 @@ const ReviewList = ({
                                     formInstance.getFieldValue([
                                       "administrations",
                                       field.name,
-                                    ])
+                                    ]),
                                   )
                                 }
                                 type="link"

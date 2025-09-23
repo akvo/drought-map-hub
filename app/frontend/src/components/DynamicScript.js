@@ -13,7 +13,7 @@ const DynamicScript = () => {
         if (window?.topojson) {
           const geoData = feature(
             window.topojson,
-            window.topojson.objects[Object.keys(window.topojson.objects)[0]]
+            window.topojson.objects[Object.keys(window.topojson.objects)[0]],
           );
           appDispatch({
             type: "SET_GEODATA",

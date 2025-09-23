@@ -84,7 +84,7 @@ const PublicationMap = ({
                 }
                 instance.destroy();
                 router.replace(
-                  `/publications/${publication?.id}/reviews/${item?.review_id}`
+                  `/publications/${publication?.id}/reviews/${item?.review_id}`,
                 );
               }}
             >
@@ -123,7 +123,7 @@ const PublicationMap = ({
 
   const descriptionItems = useMemo(() => {
     const status = PUBLICATION_STATUS_OPTIONS.find(
-      (s) => s?.value === publication?.status
+      (s) => s?.value === publication?.status,
     );
     const items = [
       {
@@ -194,7 +194,7 @@ const PublicationMap = ({
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     return {
       fillColor: DROUGHT_CATEGORY_COLOR?.[findAdm?.category],
@@ -203,7 +203,7 @@ const PublicationMap = ({
 
   const onClick = (feature) => {
     const findAdm = data?.find(
-      (d) => d?.administration_id === feature?.properties?.administration_id
+      (d) => d?.administration_id === feature?.properties?.administration_id,
     );
     openRawModal({ ...findAdm, name: feature?.properties?.name });
   };
@@ -238,7 +238,7 @@ const PublicationMap = ({
           <Title level={2}>
             {`Inkundla CDI Publication for: ${dayjs(
               publication?.year_month,
-              "YYYY-MM"
+              "YYYY-MM",
             ).format("MMMM YYYY")}`}
           </Title>
         </div>

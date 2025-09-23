@@ -48,7 +48,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         : `/admin/reviewers?page=${page}`;
       const { data: newReviewerList, current: currPage } = await api(
         "GET",
-        apiURL
+        apiURL,
       );
       const _reviewers = [
         ...form.getFieldValue("reviewers"),
@@ -110,7 +110,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
           _reviewers.map((r) => ({
             ...r,
             checked: checkItems.includes(r?.id),
-          }))
+          })),
         );
         setSearching(false);
       }, 300);
@@ -137,7 +137,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
         ...geonode,
         reviewers: reviewerList,
         subject: `${CREATE_PUBLICATION_MAIL?.subject} ${dayjs(
-          geonode?.year_month
+          geonode?.year_month,
         ).format("YYYY-MM")}`,
         year_month: dayjs(geonode?.year_month),
         message: CREATE_PUBLICATION_MAIL?.message,
@@ -157,7 +157,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                     const selectedItems = values?.filter((v) => v?.checked);
                     if (!selectedItems?.length) {
                       return Promise.reject(
-                        new Error("Please select at least one reviewer.")
+                        new Error("Please select at least one reviewer."),
                       );
                     }
                   },
@@ -206,7 +206,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
                                   "reviewers",
                                   field.name,
                                   "id",
-                                ])
+                                ]),
                               )
                             }
                           />

@@ -81,9 +81,10 @@ const ValidationTable = ({
         title: "",
         dataIndex: "administration_id",
         render: (_, record) => {
-          const comments = extraColumns
-            ?.map((col) => record[`${col.dataIndex}_comment`])
-            ?.filter((col) => col?.comment) || [];
+          const comments =
+            extraColumns
+              ?.map((col) => record[`${col.dataIndex}_comment`])
+              ?.filter((col) => col?.comment) || [];
           return (
             <Button type="text" onClick={() => onDetails(record)}>
               {comments.length === 0 ? (
@@ -200,7 +201,7 @@ const ValidationTable = ({
                   "ant-table-cell hover:ant-table-cell-row-hover edh-cell",
                   {
                     [`bg-[${color}]`]: color,
-                  }
+                  },
                 )}
                 style={style}
               >
@@ -227,7 +228,7 @@ const ValidationTable = ({
           },
         }))}
         dataSource={data?.filter((d) =>
-          search ? d?.name?.toLowerCase()?.includes(search?.toLowerCase()) : d
+          search ? d?.name?.toLowerCase()?.includes(search?.toLowerCase()) : d,
         )}
         loading={updating}
         rowClassName="edh-row"

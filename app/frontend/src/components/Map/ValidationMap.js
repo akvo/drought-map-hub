@@ -44,7 +44,7 @@ const ValidationMap = ({
         : findData?.initial_category;
       return [isValidated, category, findData];
     },
-    [dataSource]
+    [dataSource],
   );
 
   const mapStyle = useCallback(
@@ -56,13 +56,13 @@ const ValidationMap = ({
         color: isValidated ? "#032e15" : styleOptions?.color,
       };
     },
-    [getData]
+    [getData],
   );
 
   const onFeature = useCallback(
     (feature) => {
       const [isValidated, category] = getData(
-        feature?.properties?.administration_id
+        feature?.properties?.administration_id,
       );
       return {
         fillColor: DROUGHT_CATEGORY_COLOR?.[category],
@@ -70,7 +70,7 @@ const ValidationMap = ({
         color: isValidated ? "green" : null,
       };
     },
-    [getData]
+    [getData],
   );
 
   const onClick = useCallback(
@@ -85,7 +85,7 @@ const ValidationMap = ({
         onDetails({ ...data, name: feature?.properties?.name });
       }
     },
-    [getData, onDetails, readOnly]
+    [getData, onDetails, readOnly],
   );
 
   if (refreshMap) {
