@@ -29,8 +29,7 @@ export default async function middleware(request) {
       },
     );
     const configData = await reqConfig.json();
-    if (reqConfig.ok) {
-      console.log("App is configured", configData);
+    if (reqConfig.ok && configData?.is_configured) {
       response.cookies.set({
         name: "appConfig",
         value: "configured",
