@@ -23,7 +23,7 @@ const userReducer = (state, action) => {
       return initialValues;
     default:
       throw Error(
-        `Unknown action: ${action.type}. Action type must be CAPITAL text.`
+        `Unknown action: ${action.type}. Action type must be CAPITAL text.`,
       );
   }
 };
