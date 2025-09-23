@@ -24,27 +24,61 @@ class SetupBboxAPITest(APITestCase):
         self.path = Path(__file__).resolve().parent
         self.config_path = "./source/config/cdi_project_settings.test.json"
 
-        # Initial config with default bounds
+        # Initial config with default bounds (aligned to grid)
         self.initial_bounds = {
-            'n_lat': 0.0,
+            'n_lat': 0.05,   # Minimum 0.05 degree span required
             's_lat': 0.0,
             'w_lon': 0.0,
-            'e_lon': 0.0
+            'e_lon': 0.05    # Minimum 0.05 degree span required
         }
         with open(self.config_path, 'w') as f:
             json.dump({'bounds': self.initial_bounds}, f)
 
+        # Valid bbox with proper grid spacing (will be aligned)
         self.valid_bbox = {
             'n_lat': 10.0,
             's_lat': -10.0,
             'w_lon': -20.0,
             'e_lon': 20.0
         }
+
+        # Expected aligned values after grid alignment
+        self.expected_aligned_bbox = {
+            'n_lat': 10.025,    # Already aligned
+            's_lat': -9.925,   # Already aligned
+            'w_lon': -20.025,   # Already aligned
+            'e_lon': 20.025     # Already aligned
+        }
+
+        # Bbox that needs alignment
+        self.unaligned_bbox = {
+            'n_lat': 10.123,
+            's_lat': -10.456,
+            'w_lon': -20.789,
+            'e_lon': 20.321
+        }
+
+        # Expected aligned values
+        self.expected_unaligned_to_aligned = {
+            'n_lat': 10.025,    # Aligned to 0.05 grid
+            's_lat': -10.375,  # Aligned to 0.05 grid
+            'w_lon': -20.825,   # Aligned to 0.05 grid
+            'e_lon': 20.325    # Aligned to 0.05 grid
+        }
+
+        # Invalid bbox (n_lat <= s_lat)
         self.invalid_bbox = {
             'n_lat': -10.0,
             's_lat': 10.0,
             'w_lon': -20.0,
             'e_lon': 20.0
+        }
+        # Too small bbox (less than 0.05 degrees)
+        self.too_small_bbox = {
+            'n_lat': 0.02,
+            's_lat': 0.0,
+            'w_lon': 0.0,
+            'e_lon': 0.02
         }
         # Set the secret header
         self.client.credentials(HTTP_X_SETUP_SECRET='test-secret-key')
@@ -60,8 +94,8 @@ class SetupBboxAPITest(APITestCase):
             response.data['message'], 'Bounding box retrieved successfully.'
         )
 
-    def test_post_bounding_box_success(self):
-        """Test updating the bounding box with valid data."""
+    def test_post_bounding_box_success_aligned(self):
+        """Test updating the bounding box with valid data (already aligned)."""
         response = self.client.post(self.url, self.valid_bbox, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('bounding_box', response.data)
@@ -69,16 +103,54 @@ class SetupBboxAPITest(APITestCase):
         self.assertEqual(
             response.data['message'], 'Bounding box updated successfully.'
         )
-        self.assertEqual(response.data['bounding_box'], {
-            'n_lat': 10.0,
-            's_lat': -10.0,
-            'w_lon': -20.0,
-            'e_lon': 20.0
-        })
-        # Verify the file was updated
+        self.assertEqual(
+            response.data['bounding_box'],
+            self.expected_aligned_bbox
+        )
+        # Verify the file was updated with aligned values
         with open(self.config_path, 'r') as f:
             config = json.load(f)
-        self.assertEqual(config['bounds'], self.valid_bbox)
+        self.assertEqual(config['bounds'], self.expected_aligned_bbox)
+
+    def test_post_bounding_box_success_with_alignment(self):
+        """Test updating bbox with unaligned data (should be auto-aligned)."""
+        response = self.client.post(
+            self.url, self.unaligned_bbox, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('bounding_box', response.data)
+        self.assertIn('message', response.data)
+        # Should return aligned coordinates
+        returned_bbox = response.data['bounding_box']
+        self.assertEqual(
+            returned_bbox['n_lat'],
+            self.expected_unaligned_to_aligned['n_lat']
+        )
+        self.assertEqual(
+            returned_bbox['s_lat'],
+            self.expected_unaligned_to_aligned['s_lat']
+        )
+        self.assertEqual(
+            returned_bbox['w_lon'],
+            self.expected_unaligned_to_aligned['w_lon']
+        )
+        self.assertEqual(
+            returned_bbox['e_lon'],
+            self.expected_unaligned_to_aligned['e_lon']
+        )
+
+    def test_post_bounding_box_too_small(self):
+        """Test POST with bounding box that's too small."""
+        response = self.client.post(
+            self.url, self.too_small_bbox, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('non_field_errors', response.data)
+        error_message = str(response.data['non_field_errors'])
+        self.assertTrue(
+            "Latitude span must be at least 0.05 degrees" in error_message or
+            "Longitude span must be at least 0.05 degrees" in error_message
+        )
 
     def test_post_bounding_box_invalid_s_lat_out_of_range_low(self):
         """Test POST with south latitude below -90."""
@@ -195,6 +267,58 @@ class SetupBboxAPITest(APITestCase):
         data = response.json()
         self.assertIn('detail', data)
         self.assertEqual(data['detail'], 'Forbidden.')
+
+    def test_post_bounding_box_extremely_large_area(self):
+        """Test POST with an extremely large bounding box."""
+        large_bbox = {
+            'n_lat': 85.0,
+            's_lat': -85.0,  # 170 degree span
+            'w_lon': -170.0,
+            'e_lon': 170.0   # 340 degree span
+        }
+        response = self.client.post(self.url, large_bbox, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('non_field_errors', response.data)
+        error_message = str(response.data['non_field_errors'])
+        self.assertIn("Bounding box is too large", error_message)
+
+    def test_grid_alignment_functionality(self):
+        """Test that coordinates are properly aligned to 0.05-degree grid."""
+        # Test coordinates that need alignment
+        unaligned_data = {
+            'n_lat': -25.723,   # Should align to -25.7
+            's_lat': -27.318,   # Should align to -27.3
+            'w_lon': 30.791,    # Should align to 30.8
+            'e_lon': 32.147     # Should align to 32.15
+        }
+        response = self.client.post(self.url, unaligned_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_bbox = response.data['bounding_box']
+        # Check that values are aligned to 0.05-degree grid
+        self.assertEqual(returned_bbox['n_lat'], -25.775)
+        self.assertEqual(returned_bbox['s_lat'], -27.225)
+        self.assertEqual(returned_bbox['w_lon'], 30.775)
+        self.assertEqual(returned_bbox['e_lon'], 32.175)
+
+    def test_eswatini_coordinates(self):
+        """Test with actual Eswatini coordinates."""
+        eswatini_bbox = {
+            'n_lat': -25.72,
+            's_lat': -27.32,
+            'w_lon': 30.79,
+            'e_lon': 32.14
+        }
+        response = self.client.post(self.url, eswatini_bbox, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('bounding_box', response.data)
+        self.assertIn('message', response.data)
+        # These coordinates should already be aligned
+        self.assertEqual(response.data['bounding_box'], {
+            'n_lat': -25.775,   # Aligned from -25.72
+            's_lat': -27.225,   # Aligned from -27.32
+            'w_lon': 30.775,    # Aligned from 30.79
+            'e_lon': 32.175    # Aligned from 32.14
+        })
 
     def tearDown(self):
         # Clean up the config file
