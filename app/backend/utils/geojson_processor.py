@@ -8,6 +8,7 @@ from topojson import Topology
 def process_geojson_file(geojson_file):
     """
     Process uploaded GeoJSON file and convert it to TopoJSON.
+    Adds 'administration_id' property to features if it doesn't exist.
     Saves to country.topojson in production or country-test.topojson
     during tests.
     Args:
@@ -23,6 +24,16 @@ def process_geojson_file(geojson_file):
         geojson_data = json.loads(geojson_content.decode('utf-8'))
         # Reset file pointer for potential reuse
         geojson_file.seek(0)
+        # Add administration_id to features if it doesn't exist
+        if 'features' in geojson_data:
+            for i, feature in enumerate(geojson_data['features']):
+                # Ensure properties exist
+                if 'properties' not in feature:
+                    feature['properties'] = {}
+                # Add administration_id if it doesn't exist
+                if 'administration_id' not in feature['properties']:
+                    # Generate unique ID using index + 1 (starting from 1)
+                    feature['properties']['administration_id'] = i + 1
         # Create a GeoDataFrame from the GeoJSON data
         gdf = gpd.GeoDataFrame.from_features(
             geojson_data.get('features', []),
