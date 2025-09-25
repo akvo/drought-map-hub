@@ -28,7 +28,11 @@ curl -s -k -u "${ADMIN_USER}:${ADMIN_PASSWORD}" \
     </global>' \
     "${GEOSERVER_PUBLIC_LOCATION}/rest/settings.xml"
 
-echo "Post-installation script completed."
+
+if [ -f ./app/backend/source/config/cdi_project_settings.json ]; then
+    echo "Copying cdi_project_settings.json to ./cdi/config/ directory..."
+    cp ./app/backend/source/config/cdi_project_settings.json ./cdi/config/cdi_project_settings.json
+fi
 
 # Restart backend container in app directory to apply changes
 cd app || exit
@@ -37,3 +41,6 @@ docker compose restart backend
 docker compose exec backend python manage.py generate_administrations_seeder
 docker compose exec backend python manage.py generate_config
 echo "Backend container restarted."
+
+
+echo "Post-installation script completed."
