@@ -283,6 +283,7 @@ create_network() {
 
 # Function to copy geonode settings to app and cdi when running all services
 copy_geonode_settings() {
+    local mode="$1"
     local geonode_env="$SCRIPT_DIR/geonode/.env"
     local app_env="$SCRIPT_DIR/app/.env"
     local cdi_env="$SCRIPT_DIR/cdi/.env"
@@ -298,6 +299,7 @@ copy_geonode_settings() {
 
     # Extract values from geonode/.env
     local siteurl=$(grep "^SITEURL=" "$geonode_env" | cut -d'=' -f2-)
+    local http_host=$(grep "^HTTP_HOST=" "$geonode_env" | cut -d'=' -f2-)
     local admin_username=$(grep "^ADMIN_USERNAME=" "$geonode_env" | cut -d'=' -f2-)
     local admin_password=$(grep "^ADMIN_PASSWORD=" "$geonode_env" | cut -d'=' -f2-)
 
@@ -306,8 +308,28 @@ copy_geonode_settings() {
         return 0
     fi
 
+    # Set GEONODE_BASE_URL based on mode
+    local geonode_base_url
+    local geonode_host
+    if [[ "$mode" == "dev" ]]; then
+        # In development mode, use container name for internal Docker networking
+        geonode_base_url="http://nginx4drought_map_hub"
+        geonode_host="${http_host:-localhost}"
+        echo "Development mode: Using container networking"
+        echo "  GEONODE_BASE_URL: $geonode_base_url"
+        echo "  GEONODE_HOST: $geonode_host"
+    else
+        # In production mode, use the actual site URL
+        geonode_base_url="$siteurl"
+        geonode_host="${http_host:-$(echo "$siteurl" | sed 's|http[s]*://||')}"
+        echo "Production mode: Using public URLs"
+        echo "  GEONODE_BASE_URL: $geonode_base_url"
+        echo "  GEONODE_HOST: $geonode_host"
+    fi
+
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[DRY RUN] Would copy SITEURL=$siteurl to GEONODE_BASE_URL in app/.env"
+        echo "[DRY RUN] Would copy GEONODE_BASE_URL=$geonode_base_url to app/.env"
+        echo "[DRY RUN] Would copy GEONODE_HOST=$geonode_host to app/.env"
         echo "[DRY RUN] Would copy ADMIN_USERNAME=$admin_username to GEONODE_ADMIN_USERNAME in app/.env"
         echo "[DRY RUN] Would copy ADMIN_PASSWORD=$admin_password to GEONODE_ADMIN_PASSWORD in app/.env"
         echo "[DRY RUN] Would copy SITEURL=$siteurl to GEONODE_URL in cdi/.env"
@@ -316,19 +338,58 @@ copy_geonode_settings() {
     else
         # Update app/.env
         if [[ -f "$app_env" ]]; then
-            sed -i "s|^GEONODE_BASE_URL=.*|GEONODE_BASE_URL=$siteurl|" "$app_env"
-            sed -i "s|^GEONODE_ADMIN_USERNAME=.*|GEONODE_ADMIN_USERNAME=$admin_username|" "$app_env"
-            sed -i "s|^GEONODE_ADMIN_PASSWORD=.*|GEONODE_ADMIN_PASSWORD=$admin_password|" "$app_env"
-            echo "Updated app/.env with Geonode settings"
+            # Update or add GEONODE_BASE_URL
+            if grep -q "^GEONODE_BASE_URL=" "$app_env"; then
+                sed -i "s|^GEONODE_BASE_URL=.*|GEONODE_BASE_URL=$geonode_base_url|" "$app_env"
+            else
+                echo "GEONODE_BASE_URL=$geonode_base_url" >> "$app_env"
+            fi
+            
+            # Update or add GEONODE_HOST
+            if grep -q "^GEONODE_HOST=" "$app_env"; then
+                sed -i "s|^GEONODE_HOST=.*|GEONODE_HOST=$geonode_host|" "$app_env"
+            else
+                echo "GEONODE_HOST=$geonode_host" >> "$app_env"
+            fi
+            
+            # Update or add admin credentials
+            if grep -q "^GEONODE_ADMIN_USERNAME=" "$app_env"; then
+                sed -i "s|^GEONODE_ADMIN_USERNAME=.*|GEONODE_ADMIN_USERNAME=$admin_username|" "$app_env"
+            else
+                echo "GEONODE_ADMIN_USERNAME=$admin_username" >> "$app_env"
+            fi
+            
+            if grep -q "^GEONODE_ADMIN_PASSWORD=" "$app_env"; then
+                sed -i "s|^GEONODE_ADMIN_PASSWORD=.*|GEONODE_ADMIN_PASSWORD=$admin_password|" "$app_env"
+            else
+                echo "GEONODE_ADMIN_PASSWORD=$admin_password" >> "$app_env"
+            fi
+            
+            echo "Updated app/.env with Geonode settings for $mode mode"
         else
             echo "Warning: $app_env not found, skipping app settings update..."
         fi
 
         # Update cdi/.env
         if [[ -f "$cdi_env" ]]; then
-            sed -i "s|^GEONODE_URL=.*|GEONODE_URL=$siteurl|" "$cdi_env"
-            sed -i "s|^GEONODE_USERNAME=.*|GEONODE_USERNAME=$admin_username|" "$cdi_env"
-            sed -i "s|^GEONODE_PASSWORD=.*|GEONODE_PASSWORD=$admin_password|" "$cdi_env"
+            if grep -q "^GEONODE_URL=" "$cdi_env"; then
+                sed -i "s|^GEONODE_URL=.*|GEONODE_URL=$siteurl|" "$cdi_env"
+            else
+                echo "GEONODE_URL=$siteurl" >> "$cdi_env"
+            fi
+            
+            if grep -q "^GEONODE_USERNAME=" "$cdi_env"; then
+                sed -i "s|^GEONODE_USERNAME=.*|GEONODE_USERNAME=$admin_username|" "$cdi_env"
+            else
+                echo "GEONODE_USERNAME=$admin_username" >> "$cdi_env"
+            fi
+            
+            if grep -q "^GEONODE_PASSWORD=" "$cdi_env"; then
+                sed -i "s|^GEONODE_PASSWORD=.*|GEONODE_PASSWORD=$admin_password|" "$cdi_env"
+            else
+                echo "GEONODE_PASSWORD=$admin_password" >> "$cdi_env"
+            fi
+            
             echo "Updated cdi/.env with Geonode settings"
         else
             echo "Warning: $cdi_env not found, skipping cdi settings update..."
@@ -503,12 +564,38 @@ else
     # Run services based on the service parameter
     if [[ "$SERVICE" == "all" ]]; then
         # Copy geonode settings to app and cdi
-        copy_geonode_settings
+        copy_geonode_settings "$MODE"
 
         # Run all services
         for service in app cdi geonode; do
             run_service "$service" "$MODE"
         done
+
+        # Connect app network to geonode network in development mode
+        if [[ "$MODE" == "dev" ]]; then
+            echo "========================================"
+            echo "Connecting app network to geonode network..."
+            echo "========================================"
+            
+            if [[ "$DRY_RUN" == "true" ]]; then
+                echo "[DRY RUN] Would execute: docker network connect drought_map_hub_default app-mainnetwork-1"
+            else
+                # Check if container exists before connecting
+                if docker ps --format "table {{.Names}}" | grep -q "app-mainnetwork-1"; then
+                    # Check if already connected to avoid error
+                    if ! docker network inspect drought_map_hub_default --format '{{range .Containers}}{{.Name}}{{"\n"}}{{end}}' | grep -q "app-mainnetwork-1"; then
+                        echo "Connecting app-mainnetwork-1 to drought_map_hub_default network..."
+                        docker network connect drought_map_hub_default app-mainnetwork-1
+                        echo "Network connection established successfully!"
+                    else
+                        echo "app-mainnetwork-1 is already connected to drought_map_hub_default network."
+                    fi
+                else
+                    echo "Warning: app-mainnetwork-1 container not found, skipping network connection..."
+                fi
+            fi
+            echo ""
+        fi
     else
         # Run specific service
         run_service "$SERVICE" "$MODE"
