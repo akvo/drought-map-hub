@@ -35,7 +35,6 @@ class AdministrationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "region",
             "created_at",
             "updated_at",
         ]
