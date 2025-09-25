@@ -1,5 +1,8 @@
 # Generic Drought-map Hub
 
+[![Coverage Status](https://coveralls.io/repos/github/akvo/drought-map-hub/badge.svg?branch=main)](https://coveralls.io/github/akvo/drought-map-hub?branch=main) <a href='https://dbdocs.io/akvo/droughtmap-hub' target="_blank"><img alt='docsdotrs' src='https://img.shields.io/badge/DBDocs-100000?style=plastic&logo=docsdotrs&logoColor=white&labelColor=0246cc&color=023db3'/></a>
+
+
 This repository contains the core components and automation scripts for a **Drought-map Hub**, a platform designed to provide streamlined, user-friendly, and validated Combined Drought Indicator (CDI) products. It enhances drought monitoring capabilities by automating data management and promoting public access to critical information.
 
 ## 1. Overview and Purpose
