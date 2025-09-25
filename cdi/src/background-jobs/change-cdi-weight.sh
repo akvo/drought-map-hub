@@ -58,8 +58,8 @@ if [ -z "$LST_WEIGHT" ] || [ -z "$NDVI_WEIGHT" ] || [ -z "$SPI_WEIGHT" ] || [ -z
     usage
 fi
 # Path to the config file
-BASE_PATH=$(dirname "$0")
-CONFIG_FILE="$BASE_PATH/cdi_project_settings.conf"
+BASE_PATH=$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")
+CONFIG_FILE="$BASE_PATH/config/cdi_project_settings.json"
 # Check if the config file exists
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Config file not found: $CONFIG_FILE"
