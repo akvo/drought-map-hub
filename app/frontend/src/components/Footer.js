@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import { APP_SETTINGS } from "@/static/config";
 import { usePathname } from "next/navigation";
 
-const Footer = () => {
+const Footer = ({ appName = APP_SETTINGS.title }) => {
   const pathname = usePathname();
   if (pathname === "/iframe/map") {
     return null;
@@ -16,7 +16,7 @@ const Footer = () => {
       <div className="container w-full text-white text-base flex flex-row items-center justify-between">
         <div>
           <p>
-            &copy; {dayjs().format("YYYY")} - {APP_SETTINGS.copy}
+            &copy; {dayjs().format("YYYY")} - {appName}
           </p>
         </div>
         <div>

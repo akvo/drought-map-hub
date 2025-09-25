@@ -1,4 +1,4 @@
-export const DEFAULT_CENTER = [-26.573789513879785, 31.626892089843754];
+export const DEFAULT_CENTER = [0, 0];
 
 export const USER_ROLES = {
   admin: 1,
@@ -91,10 +91,9 @@ export const CREATE_PUBLICATION_MAIL = {
 };
 
 export const APP_SETTINGS = {
-  copy: "Eswatini National Disaster Management Agency",
-  title: "Eswatini Drought Monitor",
+  title: "DroughtMap Hub",
   about:
-    "The Eswatini Drought Monitor is developed through a collaboration between the National Disaster Management Agency of Eswatini, the Ministry of Agriculture, and the Eswatini Meteorological Service.",
+    "The DroughtMap Hub is a platform designed to provide streamlined, user-friendly, and validated Combined Drought Indicator (CDI) products. It enhances drought monitoring capabilities by automating data management and promoting public access to critical information.",
 };
 
 export const RUNDECK_JOB_STATUS_COLOR = {
@@ -192,36 +191,3 @@ export const DEFAULT_CDI_WEIGHTS = {
   spi: 0.4,
   sm: 0.0,
 };
-
-export const TWG_LOGOS = [
-  {
-    id: 1,
-    image: "/images/logo-ndma.jpg",
-    alt: "National Disaster Management Agency",
-    url: "https://ndma.org.sz/",
-  },
-  {
-    id: 2,
-    image: "/images/logo-moag.png",
-    alt: "MoAg (Ministry of Agriculture)",
-    url: "https://www.gov.sz/index.php/ministries-departments/ministry-of-agriculture",
-  },
-  {
-    id: 3,
-    image: "/images/logo-dwa.png",
-    alt: "DWA (Department of Water Affairs)",
-    url: "https://www.gov.sz/index.php/ministries-departments/ministry-of-natural-resources",
-  },
-  {
-    id: 4,
-    image: "/images/logo-met-1.png",
-    alt: "MET (Meteorological Office) 1",
-    url: "https://www.swazimet.gov.sz/",
-  },
-  {
-    id: 5,
-    image: "/images/logo-met-2.jpg",
-    alt: "MET (Meteorological Office) 2",
-    url: "https://www.uneswa.sz/",
-  },
-];

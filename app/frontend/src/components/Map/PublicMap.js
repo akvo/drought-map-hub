@@ -120,7 +120,12 @@ const PublicMap = ({ id, validated_values: data = [], bulletin_url }) => {
                   }}
                   trigger={["click"]}
                 >
-                  <Button type="primary" loading={downloading} block>
+                  <Button
+                    type="primary"
+                    loading={downloading}
+                    disabled={!id}
+                    block
+                  >
                     Download
                   </Button>
                 </Dropdown>

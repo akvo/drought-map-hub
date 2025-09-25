@@ -1,12 +1,12 @@
+import dynamic from "next/dynamic";
 import {
   CompareMapForm,
   FeedbackSection,
   LogoSection,
   Navbar,
 } from "@/components";
-import { api, auth } from "@/lib";
+import { api, auth, getAppConfig } from "@/lib";
 import { APP_SETTINGS } from "@/static/config";
-import dynamic from "next/dynamic";
 
 const ComparisonSlider = dynamic(
   () => import("@/components/ComparisonSlider"),
@@ -17,6 +17,7 @@ const ComparisonSlider = dynamic(
 
 const ComparePage = async ({ searchParams }) => {
   const session = await auth.getSession();
+  const appConfig = await getAppConfig();
   const dates = await api("GET", "/dates");
   const baseURL = process.env.WEBDOMAIN;
   return (
@@ -26,7 +27,7 @@ const ComparePage = async ({ searchParams }) => {
         <div className="w-full space-y-2">
           <div className="w-full border-b border-b-neutral-200 pb-4">
             <h1 className="text-2xl xl:text-3xl font-bold">
-              {APP_SETTINGS.title} - Compare Map
+              {appConfig?.name || APP_SETTINGS.title} - Compare Map
             </h1>
           </div>
           <div className="w-full py-3">

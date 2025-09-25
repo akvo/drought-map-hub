@@ -101,6 +101,9 @@ while true; do
     fi
 done
 
+# Set default GEONODE_HOST based on domain or use default
+GEONODE_HOST=$(echo "$GEONODE_DOMAIN" | sed 's|.*://||' | sed 's|/.*||')
+
 # 4. Service selection
 echo
 echo "4. Which services would you like to run? Choose by number 1-4 (default 1):"
@@ -119,6 +122,8 @@ while true; do
                 echo
                 echo "App service selected. Please provide Geonode instance configuration:"
                 GEONODE_BASE_URL=$(read_with_default "   Geonode Base URL" "http://localhost")
+                # Set default GEONODE_HOST based on GEONODE_BASE_URL or use default
+                GEONODE_HOST=$(echo "$GEONODE_BASE_URL" | sed 's|.*://||' | sed 's|/.*||')
                 GEONODE_ADMIN_USERNAME=$(read_with_default "   Geonode Admin Username" "admin")
                 GEONODE_ADMIN_PASSWORD=$(read_with_default "   Geonode Admin Password" "youradminpassword")
                 ;;
@@ -170,6 +175,7 @@ echo "Creating app/.env..."
 backup_file "app/.env"
 cat > app/.env << EOF
 GEONODE_BASE_URL="${GEONODE_BASE_URL:-$GEONODE_DOMAIN}"
+GEONODE_HOST="${GEONODE_HOST:-$(echo "$GEONODE_DOMAIN" | sed 's|.*://||' | sed 's|/.*||')}"
 GEONODE_ADMIN_USERNAME="${GEONODE_ADMIN_USERNAME:-admin}"
 GEONODE_ADMIN_PASSWORD="${GEONODE_ADMIN_PASSWORD:-youradminpassword}"
 EMAIL_HOST="${EMAIL_HOST}"

@@ -178,27 +178,11 @@ pyrightconfig.json
 # Mac files
 .DS_Store
 
-# source files
-source/input_data/MOD21C3_LST/*
-source/input_data/MOD13C2_NDVI/*
-source/input_data/CHIRPS/*
-source/input_data/soil_moisture/*
-source/map_data/*
-source/mapping/data/*
-source/mapping/output/maps/*
-source/output_data/*.nc
-
-!source/input_data/MOD21C3_LST/.gitkeep
-!source/input_data/MOD13C2_NDVI/.gitkeep
-!source/input_data/CHIRPS/.gitkeep
-!source/input_data/soil_moisture/.gitkeep
-!source/map_data/.gitkeep
-!source/working_data/.gitkeep
-!source/mapping/data/.gitkeep
-!source/mapping/output/maps/.gitkeep
-
-# Ignore all files starting with 'MERRA2_100.tavgM_2d_slv_Nx' in the 'scripts/' folder
-scripts/MERRA2_100.tavgM_2d_slv_Nx.*
+# Ignore all files starting with MERRA2_100.tavgM_2d_slv_Nx.
+MERRA2_100.tavgM_2d_slv_Nx.*
 
 # Earth data cookies
-scripts/.urs_cookies
+.urs_cookies
+
+# Ignore GeoNode upload log files
+geonode_category.json

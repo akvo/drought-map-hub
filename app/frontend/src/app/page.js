@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import { api, auth } from "@/lib";
+import { api, auth, getAppConfig } from "@/lib";
 import { FeedbackSection, LogoSection, Navbar } from "@/components";
 import Link from "next/link";
 import { Button } from "antd";
@@ -18,8 +18,9 @@ const PublicMap = dynamic(() => import("../components/Map/PublicMap"), {
 
 const Home = async () => {
   const session = await auth.getSession();
+  const appConfig = await getAppConfig();
   const { data } = await api("GET", "/maps?page_size=1");
-  const map = data?.[0] || null;
+  const map = data?.[0] || {};
   return (
     <div className="w-full min-h-screen">
       <Navbar session={session} />
@@ -27,10 +28,10 @@ const Home = async () => {
         <div className="w-full space-y-2">
           <div className="w-full border-b border-b-neutral-200 pb-4">
             <h1 className="text-2xl xl:text-3xl font-bold">
-              {APP_SETTINGS.title}
+              {appConfig?.name || APP_SETTINGS.title}
             </h1>
           </div>
-          {map && (
+          {map?.year_month && (
             <div className="w-full flex flex-row align-center justify-between">
               <div>
                 <h1 className="text-xl xl:text-2xl font-bold">
@@ -55,12 +56,12 @@ const Home = async () => {
             </div>
           )}
         </div>
-        {map && (
-          <div className="w-full flex items-start gap-6">
-            <PublicMap {...map} />
-          </div>
-        )}
-        {map && (
+
+        <div className="w-full flex items-start gap-6">
+          <PublicMap {...map} />
+        </div>
+
+        {map?.narrative && (
           <div className="w-full overflow-x-auto" id="edh-narrative">
             <div dangerouslySetInnerHTML={{ __html: map.narrative }} />
           </div>

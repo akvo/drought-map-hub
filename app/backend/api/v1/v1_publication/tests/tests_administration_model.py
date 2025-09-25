@@ -6,7 +6,6 @@ class AdministrationModelTest(TestCase):
     def test_create_administration(self):
         admin = Administration.objects.create(
             name="Test Administration",
-            region="Test region",
         )
         self.assertEqual(str(admin), "Test Administration")
         self.assertIsNotNone(admin.created_at)
@@ -15,5 +14,4 @@ class AdministrationModelTest(TestCase):
         admin = Administration.objects.create(
             name="Another Admin",
         )
-        self.assertEqual(admin.region, None)
         self.assertEqual(admin.name, "Another Admin")

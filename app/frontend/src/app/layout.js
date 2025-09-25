@@ -1,23 +1,28 @@
 import "./globals.css";
+import dynamic from "next/dynamic";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider } from "antd";
-import dynamic from "next/dynamic";
 import { AppContextProvider } from "@/context";
 import { inter, roboto, robotoMono } from "./fonts";
 import classNames from "classnames";
 import { Footer } from "@/components";
+import { APP_SETTINGS } from "@/static/config";
+import { getAppConfig } from "@/lib";
 
-export const metadata = {
-  title: "eSwatini - DroughtMap Hub",
-  description:
-    "The purpose of the DroughtMap Hub is to provide a user-friendly interface to validate, publish and browse CDI products.",
-};
+export async function generateMetadata() {
+  const appConfig = await getAppConfig();
+  return {
+    title: appConfig?.name || APP_SETTINGS.title,
+    description: appConfig?.about || APP_SETTINGS.about,
+  };
+}
 
 const DynamicScript = dynamic(() => import("@/components/DynamicScript"), {
   ssr: false,
 });
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const appConfig = await getAppConfig();
   return (
     <html lang="en">
       <body
@@ -65,7 +70,7 @@ export default function RootLayout({ children }) {
               }}
             >
               {children}
-              <Footer />
+              <Footer appName={appConfig?.name || APP_SETTINGS.title} />
             </ConfigProvider>
           </AntdRegistry>
           <div suppressHydrationWarning>

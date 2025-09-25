@@ -21,6 +21,7 @@ from api.v1.v1_publication.serializers import (
 )
 from api.v1.v1_publication.utils import get_category
 from utils.email_helper import send_email, EmailTypes
+from urllib.parse import urlparse, urlunparse
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -162,7 +163,18 @@ def download_geonode_dataset(
 
     # Download and store it in /tmp directory
     input_file = os.path.join(tmp_dir, filename)
-    response = requests.get(download_url, stream=True)
+    parsed_download = urlparse(download_url)
+    base_parsed = urlparse(settings.GEONODE_BASE_URL)
+    new_parsed = parsed_download._replace(
+        scheme=base_parsed.scheme,
+        netloc=base_parsed.netloc,
+    )
+    download_url = urlunparse(new_parsed)
+    response = requests.get(
+        download_url,
+        headers={'Host': settings.GEONODE_HOST},
+        stream=True
+    )
     if response.status_code == 200:
         with open(input_file, "wb") as f:
             # Write the response in chunks to handle large files

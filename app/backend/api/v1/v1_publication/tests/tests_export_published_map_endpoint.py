@@ -55,7 +55,6 @@ class ExportMapAPITest(APITestCase):
                     },
                     "properties": {
                         "administration_id": 4588078,
-                        "region": "Hhohho",
                         "name": "Hhukwini",
                     },
                 },
@@ -67,7 +66,6 @@ class ExportMapAPITest(APITestCase):
                     },
                     "properties": {
                         "administration_id": 4588079,
-                        "region": "Lubombo",
                         "name": "Siteki",
                     },
                 },
