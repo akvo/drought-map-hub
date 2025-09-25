@@ -30,6 +30,7 @@ read_with_mask() {
     local prompt="$1"
     local default="$2"
     local value
+    local old_stty
 
     # If running in a non-interactive shell, fall back to default or empty
     if [ ! -t 0 ]; then
@@ -41,39 +42,32 @@ read_with_mask() {
         return
     fi
 
-    if [ -n "$default" ]; then
-        # Use read -s to hide input; print '*' feedback while typing
-        # This implementation uses stty to disable echo and reads one char at a time
-        echo -n "$prompt [$default]: "
-    else
-        echo -n "$prompt: "
+    # Use /dev/tty for prompt and input so the question is visible even when
+    # stdin/stdout are redirected (sensible for piped or subshell usage).
+    local tty=/dev/tty
+    if [ ! -c "$tty" ]; then
+        tty=/dev/stdin
     fi
 
-    # Disable echo
-    stty -echo -icanon
-    value=""
-    while IFS= read -r -n1 char; do
-        # Enter/Return (LF or CR)
-        if [[ "$char" == $'\n' || "$char" == $'\r' ]]; then
-            break
-        fi
-        # Backspace handling (127 DEL)
-        if [[ $(printf '%d' "'${char}'") -eq 127 ]]; then
-            if [ -n "$value" ]; then
-                # remove last char from value
-                value="${value%?}"
-                # move cursor back, overwrite with space, move back again
-                echo -n $'\b \b'
-            fi
-        else
-            # append char and print asterisk
-            value+="$char"
-            echo -n "*"
-        fi
-    done
-    # Restore terminal settings
-    stty echo icanon
-    echo
+    if [ -n "$default" ]; then
+        printf "%s [%s]: " "$prompt" "$default" > "$tty"
+    else
+        printf "%s: " "$prompt" > "$tty"
+    fi
+
+    # Save current stty settings and ensure restoration on exit/interrupt
+    old_stty=$(stty -g < "$tty")
+    trap 'stty "$old_stty" < "$tty"; echo > "$tty"; exit' INT TERM
+
+    # Disable echo but keep canonical mode so pasted input arrives at once
+    stty -echo < "$tty"
+    # Read the whole line (supports paste). Use IFS= to preserve spaces.
+    IFS= read -r value < "$tty"
+
+    # Restore stty
+    stty "$old_stty" < "$tty"
+    trap - INT TERM
+    echo > "$tty"
 
     # If user entered nothing and default exists, use default
     if [ -z "$value" ] && [ -n "$default" ]; then
