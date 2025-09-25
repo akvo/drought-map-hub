@@ -1,1 +1,1 @@
-docker compose exec -T db bash -c 'pg_dump --user akvo --clean --create --format plain drought_map_hub' > /docker-entrypoint-initdb.d/001-init.sql; echo "Dumped database to /docker-entrypoint-initdb.d/001-init.sql"'
+docker compose exec -T db bash -c 'pg_dump --user akvo --clean --create --format plain dmh_app' > /docker-entrypoint-initdb.d/001-init.sql; echo "Dumped database to /docker-entrypoint-initdb.d/001-init.sql"'

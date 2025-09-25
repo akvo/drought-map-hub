@@ -13,7 +13,7 @@ services:
       - POSTGRES_PASSWORD=password
       - DB_HOST=db
       - DB_PASSWORD=password
-      - DB_SCHEMA=drought_map_hub
+      - DB_SCHEMA=dmh_app
       - DB_USER=akvo
     ports:
       - "5433:5432"
@@ -25,7 +25,7 @@ services:
       - ./:/app:delegated
       - ../.git:/app/.git:ro
     environment:
-      - DB_SCHEMA=drought_map_hub
+      - DB_SCHEMA=dmh_app
       - DB_USER=akvo
       - DB_PASSWORD=password
       - DB_HOST=db
