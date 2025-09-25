@@ -5,7 +5,10 @@ import geopandas as gpd
 from topojson import Topology
 
 
-def process_geojson_file(geojson_file):
+def process_geojson_file(
+    geojson_file,
+    map_name_key=None,
+):
     """
     Process uploaded GeoJSON file and convert it to TopoJSON.
     Adds 'administration_id' property to features if it doesn't exist.
@@ -30,10 +33,13 @@ def process_geojson_file(geojson_file):
                 # Ensure properties exist
                 if 'properties' not in feature:
                     feature['properties'] = {}
-                # Add administration_id if it doesn't exist
-                if 'administration_id' not in feature['properties']:
-                    # Generate unique ID using index + 1 (starting from 1)
-                    feature['properties']['administration_id'] = i + 1
+                feature['properties']['administration_id'] = i + 1
+                if 'name' not in feature['properties']:
+                    feature['properties']['name'] = f"Administration #{i + 1}"
+                if map_name_key in feature['properties']:
+                    feature['properties']['name'] = (
+                        feature['properties'][map_name_key]
+                    )
         # Create a GeoDataFrame from the GeoJSON data
         gdf = gpd.GeoDataFrame.from_features(
             geojson_data.get('features', []),
