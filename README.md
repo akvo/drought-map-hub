@@ -116,22 +116,77 @@ The `configure.sh` script will automatically perform the following:
 
 After the initial script execution, some manual configurations are required:
 
-1.  **GeoNode Configuration**:
-    *   **Log in to the GeoNode Admin panel**.
-    *   Enable "**Unrestricted XML External Entity Resolution**" in GeoServer.
-    *   Add **four CDI categories**: `cdi-raster-map`, `spi-raster-map`, `ndvi-raster-map`, and `lst-raster-map`.
-    *   Set **GeoNode base URL, admin username, and password** in the Droughtmap Hub project's environment variables.
+1.  **Rundeck Configuration**
+
+     Follow these steps to register the remote VM that will run CDI automation scripts and to wire Rundeck into DMH.
+
+     Checklist
+     *   Ensure you can log in to Rundeck Admin (credentials are in `app/rundeck.env`).
+     *   Have the CDI VM hostname or IP and a login user ready (example users: `akvo-app`).
+     *   Decide whether to use password or SSH key authentication.
+
+     Step-by-step
+     1. Log in to the Rundeck Admin panel using the credentials in `app/rundeck.env`.
+     2. Open the DroughtMapHub project and click Project Settings → Key Storage.
+         - Add a new key entry for the VM:
+            - For password auth: create a password entry and give it an ID (for example `cdi/vm-password`).
+            - For SSH key auth: add a key pair (private key) and optionally a passphrase entry.
+     3. Still in Project Settings, open Nodes → Edit Nodes → Edit (switch to XML view).
+         - Replace or append a single node entry for your VM. Use one of the templates below and update the placeholders.
+
+     Template: password authentication
+     ```xml
+     <node name="vm-cdi-scripts" description="Remote VM for executing CDI commands" tags="linux" hostname="<<your-cdi-host>>" osArch="amd64" osFamily="unix" osName="Linux" osVersion="" username="<<username-on-vm>>" ssh-password-storage-path="keys/cdi/vm-password" ssh-authentication="password"/>
+     ```
+
+     Template: private-key authentication
+     ```xml
+     <node name="vm-cdi-scripts" description="Remote VM for executing CDI commands" tags="linux" hostname="<<your-cdi-host>>" osArch="amd64" osFamily="unix" osName="Linux" osVersion="" username="<<username-on-vm>>" ssh-key-storage-path="keys/cdi/vm-ssh-key" ssh-key-passphrase-storage-path="keys/cdi/vm-passphrase" ssh-authentication="privateKey"/>
+     ```
+
+     Notes on placeholders
+     *   `<<your-cdi-host>>`: hostname or IP reachable from the Rundeck server.
+     *   `<<username-on-vm>>`: the user that runs the CDI scripts (e.g., `akvo-app`).
+     *   `keys/cdi/vm-password`, `keys/cdi/vm-ssh-key`, `keys/cdi/vm-passphrase`: example storage paths in Rundeck Key Storage. Use the IDs you created in Key Storage.
+
+     Validate the node
+     *   After saving the node XML, go to the Nodes view and click the node to test a simple command (for example `echo hello`).
+     *   If the test fails, check the Rundeck service logs and the Key Storage entries.
+
+     DMH integration
+     *   In the DMH admin UI (log in with the DMH admin user), open Settings → Rundeck integration.
+     *   Provide the Rundeck URL, API token (the `RUNDECK_TOKEN` generated during configuration), and select the DroughtMapHub project and job names.
+     *   Save and run a test trigger from DMH to ensure the job starts and the webhook/callback works.
+
+     Troubleshooting tips
+     *   "Permission denied" when using key auth: verify the private key is correct and has the right permissions; try connecting from the Rundeck host via SSH.
+     *   "Connection timed out": confirm Rundeck server can reach the VM hostname/IP on port 22 and no firewall blocks the traffic.
+     *   If jobs run but scripts fail on the VM: inspect the remote user's environment (PATH, Python, virtualenv). Rundeck runs non-interactive shells.
+
+     Quick verification commands (run from Rundeck host or locally to confirm reachability)
+     ```bash
+     # from Rundeck host: test ssh (replace placeholders)
+     ssh -i /path/to/private_key <<username-on-vm>>@<<your-cdi-host>> 'echo ok'
+     ```
+
+     Summary
+     *   Use Rundeck Key Storage to securely store credentials.
+     *   Add the VM as a node with the correct SSH auth method.
+     *   Wire DMH to Rundeck using the generated API token and test a job trigger.
+    
+    Environment template
+    *   A template file with common Rundeck environment variables is available at `app/rundeck.env.template` — copy it to `app/rundeck.env` and fill in real values (RUNDECK_URL, RUNDECK_TOKEN, RD_USER, RD_PASSWORD, etc.).
+
+    Troubleshooting checklist
+    *   Rundeck unreachable from DMH: confirm `RUNDECK_URL` is reachable from the DMH container and that the `RUNDECK_TOKEN` is valid.
+    *   Invalid token / 401 responses: regenerate a token using the Rundeck CLI or Admin UI and update `app/rundeck.env`.
+    *   Node connection problems: test SSH from the Rundeck host to the VM and verify Key Storage entries point to the correct IDs.
+    *   Job fails only in Rundeck but works manually: inspect the job log for environment differences (PATH, virtualenv activation). Consider wrapping commands in a shell script that sets up the environment.
 2.  **DMH Configuration**:
     *   **Log in to the DMH** using the default administrator credentials.
     *   Navigate to the settings page.
     *   If **Rundeck integration is successful**, configure the email for CDI notifications.
     *   If Rundeck integration fails, create a new Rundeck connection with the available projects and jobs, then configure email notifications.
-3.  **Boundary Data Configuration**:
-    *   The geospatial boundary file, typically named `[country].topojson` (e.g., `eswatini.topojson`), is used for map visualization and processing.
-    *   This file is stored in the `backend/source` folder of the Drought-map Hub repository.
-    *   To apply or update this file, convert the shapefile to TopoJSON format (e.g., using `https://mapshaper.org`) and ensure it contains necessary properties like `name`, `region`, and `administration_id`.
-    *   After placing the `.topojson` file, execute `python manage.py generate_administrations_seeder` and `python manage.py generate_config` commands within the backend container to update the system and generate the frontend `config.js` file.
-4.  **Restart the Drought-map Hub** to apply any updated environment variables.
 
 ### Post-Installation Script Execution
 
