@@ -11,7 +11,9 @@
         ]
       },
       "properties": {
-        "prop0": "value0"
+        "prop0": "value0",
+        "id": 1,
+        "name": "Test Point 1"
       }
     },
     {
@@ -38,8 +40,9 @@
         ]
       },
       "properties": {
-        "prop0": "value0",
-        "prop1": 0.0
+        "prop0": "value1",
+        "id": 2,
+        "name": "Test Line 1"
       }
     },
     {
@@ -72,10 +75,9 @@
         ]
       },
       "properties": {
-        "prop0": "value0",
-        "prop1": {
-          "this": "that"
-        }
+        "prop0": "value2",
+        "id": 3,
+        "name": "Test Polygon 1"
       }
     }
   ]
