@@ -2,6 +2,7 @@ import json
 import os
 import shutil
 from django.conf import settings
+from django.core.management import call_command
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -19,6 +20,7 @@ from api.v1.v1_setup.serializers import (
     BoundingBoxResponseSerializer,
     InitialUserSerializer,
     InitialUserResponseSerializer,
+    CountrySerializer,
 )
 from utils.custom_permissions import IsAdmin
 
@@ -99,7 +101,8 @@ class SetupView(APIView):
                 ).data
             response_data = SetupResponseSerializer(site_config).data
             response_data['organizations'] = organizations_data
-
+            # After successful setup, run the roles and abilities seeder
+            call_command("generate_roles_n_abilities_seeder")
             return Response(response_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -414,8 +417,9 @@ class BoundingBoxView(APIView):
         }
         config['bounds'] = aligned_bounds
         # Update region name if provided
-        # if region_name:
-        #     config['region_name'] = region_name
+        site_config = SiteConfig.objects.first()
+        if site_config and site_config.country:
+            config['region_name'] = site_config.country
         # Write updated config back to main file (not template)
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
@@ -479,4 +483,31 @@ class UserSetupView(APIView):
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class CountryListView(APIView):
+    """
+    GET: Retrieve the list of countries from countries.json.
+    """
+
+    @extend_schema(
+        responses={200: CountrySerializer(many=True)},
+        tags=["Setup"],
+        description="Retrieve the list of countries from countries.json.",
+    )
+    def get(self, request, *args, **kwargs):
+        countries_file = os.path.join(
+            settings.BASE_DIR,
+            'source',
+            'countries.json'
+        )
+        try:
+            with open(countries_file, 'r') as f:
+                countries = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            countries = []
+        return Response(
+            data=CountrySerializer(countries, many=True).data,
+            status=status.HTTP_200_OK
         )

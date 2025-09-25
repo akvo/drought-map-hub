@@ -5,6 +5,7 @@ from api.v1.v1_setup.views import (
     OrganizationViewSet,
     BoundingBoxView,
     UserSetupView,
+    CountryListView,
 )
 
 urlpatterns = [
@@ -44,5 +45,10 @@ urlpatterns = [
         r"^(?P<version>(v1))/user-setup/?$",
         UserSetupView.as_view(),
         name="user-setup",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/countries/?$",
+        CountryListView.as_view(),
+        name="get-country-list",
     ),
 ]
