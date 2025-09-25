@@ -11,9 +11,9 @@ import {
   Tooltip,
   Marker,
 } from "react-leaflet";
-import { Button, Form, Space, InputNumber } from "antd";
+import { Button, Form, Space, InputNumber, Divider, Flex } from "antd";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
-import { setupApiFormData, storage } from "@/lib";
+import { indexedDBStorage, setupApiFormData } from "@/lib";
 import * as turf from "@turf/turf";
 import DynamicMap from "@/components/Map/DynamicMap";
 
@@ -303,23 +303,26 @@ const Step2Page = () => {
     }
   };
 
-  const loadMap = useCallback(() => {
+  const loadMap = useCallback(async () => {
     if (!loading) {
       return;
     }
+    let geoDataToUse = geoData;
     // Load the map with the GeoDataLayer
-    const geoStorage = storage.get("topojson");
-    if (!geoData && geoStorage) {
-      appDispatch({ type: "SET_SETUP_GEODATA", payload: geoStorage });
+    const db = await indexedDBStorage.dbPromise();
+    if (db) {
+      const geoStorage = await indexedDBStorage.get(db, "APP_GEOJSON");
+      if (!geoData && geoStorage) {
+        appDispatch({ type: "SET_SETUP_GEODATA", payload: geoStorage });
+        geoDataToUse = geoStorage;
+      }
+      if (!geoDataToUse) {
+        console.warn("No geo data available to calculate bounding box");
+        setLoading(false);
+        router.push("/setup/step-1");
+        return;
+      }
     }
-    const geoDataToUse = geoData || geoStorage;
-
-    if (!geoDataToUse) {
-      console.warn("No geo data available to calculate bounding box");
-      setLoading(false);
-      return;
-    }
-
     try {
       const bbox = turf.bbox(geoDataToUse);
       setBoundingBox(bbox);
@@ -337,7 +340,7 @@ const Step2Page = () => {
       console.error("Error calculating bounding box:", error);
       setLoading(false);
     }
-  }, [geoData, appDispatch, form, loading]);
+  }, [geoData, appDispatch, form, loading, router]);
 
   useEffect(() => {
     loadMap();
@@ -352,8 +355,13 @@ const Step2Page = () => {
 
   return (
     <div>
-      <h1>Step 2: Bounding Box Setup</h1>
-      <p>This is the second step of the setup process.</p>
+      <div className="w-full flex flex-col items-center mb-4">
+        <p className="w-full max-w-3xl text-center text-md">
+          Precisely define the geographic scope for drought analytics. This
+          ensures your <strong>CDI (Composite Drought Index) generation</strong>{" "}
+          runs accurately across your region of interest.
+        </p>
+      </div>
       {isEditingBounds && (
         <div className="mb-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
           <strong>Edit Mode:</strong> Drag the red corner markers to resize the
@@ -440,7 +448,7 @@ const Step2Page = () => {
         onFinish={handleOnFinish}
         onFieldsChange={handleFormChange}
       >
-        <Space>
+        <Space className="mb-4">
           <Form.Item
             label="South Latitude"
             name="s_lat"
@@ -480,6 +488,7 @@ const Step2Page = () => {
             />
           </Form.Item>
         </Space>
+        <br />
         <Space>
           <Form.Item
             label="North Latitude"
@@ -520,14 +529,15 @@ const Step2Page = () => {
             />
           </Form.Item>
         </Space>
-        <Space>
+        <Divider />
+        <Flex align="center" justify="space-between" className="w-full">
           <Link href="/setup/step-1">
             <Button type="default">Previous</Button>
           </Link>
           <Button type="primary" htmlType="submit" loading={submitting}>
             Next
           </Button>
-        </Space>
+        </Flex>
       </Form>
     </div>
   );
