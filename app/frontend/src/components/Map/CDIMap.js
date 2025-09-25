@@ -13,6 +13,8 @@ import {
 import { useAppContext } from "@/context/AppContextProvider";
 import { Flex, Spin } from "antd";
 import CDIMapLegend from "./CDIMapLegend";
+import { useCallback, useEffect, useState } from "react";
+import { getAppConfig } from "@/lib";
 
 const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
   const map = useMap();
@@ -44,6 +46,8 @@ const CDIMap = ({
   style = {},
   ...props
 }) => {
+  const [mapCenter, setMapCenter] = useState(null);
+  const [mapIsReady, setMapIsReady] = useState(false);
   const appContext = useAppContext();
   const geoData = appContext?.geoData || window?.topojson;
 
@@ -61,7 +65,37 @@ const CDIMap = ({
     });
   };
 
-  if (!geoData) {
+  const loadMapCenter = useCallback(async () => {
+    if (!mapIsReady && mapCenter !== null && geoData) {
+      setMapIsReady(true);
+    }
+    if (mapCenter !== null) {
+      return;
+    }
+    const appConfig = await getAppConfig();
+    if (appConfig?.map_center && typeof appConfig?.map_center === "string") {
+      try {
+        const mapCenter = JSON.parse(appConfig.map_center);
+        if (mapCenter?.lat && mapCenter?.lng) {
+          setMapCenter([mapCenter.lat, mapCenter.lng]);
+        } else {
+          setMapCenter(DEFAULT_CENTER);
+        }
+      } catch (err) {
+        console.error("Invalid map_center format in app config:", err);
+        setMapCenter(DEFAULT_CENTER);
+        return;
+      }
+    } else {
+      setMapCenter(DEFAULT_CENTER);
+    }
+  }, [mapCenter, mapIsReady, geoData]);
+
+  useEffect(() => {
+    loadMapCenter();
+  }, [loadMapCenter]);
+
+  if (!mapIsReady) {
     return null;
   }
 
@@ -69,10 +103,10 @@ const CDIMap = ({
     <div className="relative bg-neutral-100">
       {children}
       <Map
-        center={DEFAULT_CENTER}
+        center={mapCenter}
         height={80}
         zoom={9}
-        minZoom={7}
+        minZoom={6}
         scrollWheelZoom={false}
         {...props}
       >
