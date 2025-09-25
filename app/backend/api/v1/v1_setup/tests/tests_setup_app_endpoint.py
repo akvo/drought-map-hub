@@ -1,9 +1,11 @@
+import json
 from rest_framework.test import APITestCase
 from pathlib import Path
 from django.urls import reverse
 from django.test.utils import override_settings
 from rest_framework import status
 from api.v1.v1_setup.models import Organization, SiteConfig
+from api.v1.v1_users.models import Ability
 
 
 @override_settings(
@@ -28,6 +30,20 @@ class SetupAppAPITest(APITestCase):
             self.path / "static/administrations.geojson"
         )
 
+    def test_get_country_list(self):
+        """
+        Test the country list retrieval endpoint.
+        """
+        url = reverse("get-country-list", kwargs={"version": "v1"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+        self.assertGreater(len(response.data), 0)
+        # Check that each country has 'name' and 'code'
+        for country in response.data:
+            self.assertIn("name", country)
+            self.assertIn("alpha_2", country)
+
     def test_successful_setup(self):
         """
         Test the setup endpoint for successful setup.
@@ -35,6 +51,7 @@ class SetupAppAPITest(APITestCase):
         url = reverse("setup", kwargs={"version": "v1"})
         data = {
             "name": "New Drought Map Hub",
+            "country": "Testland",
             "geojson_file": self.geojson_file.open("rb"),
         }
         # Add organizations as separate fields for multipart form
@@ -91,6 +108,9 @@ class SetupAppAPITest(APITestCase):
             Organization.objects.filter(name="Organization 2").exists()
         )
 
+        # Verify roles and abilities are created
+        self.assertTrue(Ability.objects.exists())
+
     def test_setup_when_already_configured(self):
         """
         Test the setup endpoint when the application is already configured.
@@ -100,6 +120,7 @@ class SetupAppAPITest(APITestCase):
         url = reverse("setup", kwargs={"version": "v1"})
         data = {
             "name": "Another Drought Map Hub",
+            "country": "Testland",
             "geojson_file": self.geojson_file.open("rb"),
             "organizations": [
                 {
@@ -132,6 +153,55 @@ class SetupAppAPITest(APITestCase):
         self.assertEqual(SiteConfig.objects.count(), 1)
         self.assertEqual(Organization.objects.count(), 2)
 
+    def test_setup_with_map_keys(self):
+        """
+        Test the setup endpoint with map_name_key.
+        """
+        url = reverse("setup", kwargs={"version": "v1"})
+        data = {
+            "name": "New Drought Map Hub",
+            "country": "Testland",
+            "geojson_file": self.geojson_file.open("rb"),
+            "map_center": "[36.8219, -1.2921]",
+            "map_name_key": "name",
+        }
+        # Add organizations as separate fields for multipart form
+        data["organizations[0][name]"] = "Organization 1"
+        data["organizations[0][website]"] = "https://www.organization1.com"
+        data["organizations[0][is_twg]"] = "true"
+        data["organizations[0][is_collaborator]"] = "false"
+        data["organizations[0][logo]"] = self.org_image_1.open("rb")
+
+        response = self.client.post(
+            url,
+            data,
+            format="multipart",
+            HTTP_X_SETUP_SECRET="test-secret-key",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Verify country-test.topojson is created
+        target_path = "./source/country-test.topojson"
+        self.assertTrue(Path(target_path).exists())
+        # Load and verify contents
+        with open(target_path, 'r', encoding='utf-8') as f:
+            topojson_data = json.load(f)
+        self.assertIn("type", topojson_data)
+        self.assertEqual(topojson_data["type"], "Topology")
+        self.assertIn("objects", topojson_data)
+        # Check that features have properties with administration_id and name
+        for feature in topojson_data["objects"]["data"]["geometries"]:
+            self.assertIn("properties", feature)
+            self.assertIn("administration_id", feature["properties"])
+            self.assertIn("name", feature["properties"])
+            self.assertTrue(
+                feature["properties"]["name"] in [
+                    "Test Point 1", "Test Line 1", "Test Polygon 1"
+                ]
+            )
+        # Verify map_center is saved correctly
+        site_config = SiteConfig.objects.get(name="New Drought Map Hub")
+        self.assertEqual(site_config.map_center, "[36.8219, -1.2921]")
+
     def test_setup_with_missing_data(self):
         """
         Test the setup endpoint with missing required data.
@@ -139,6 +209,7 @@ class SetupAppAPITest(APITestCase):
         url = reverse("setup", kwargs={"version": "v1"})
         data = {
             # "name" is missing
+            "country": "Testland",
             "geojson_file": self.geojson_file.open("rb"),
             "organizations": [
                 {
@@ -182,6 +253,7 @@ class SetupAppAPITest(APITestCase):
         invalid_file = self.path / "static/invalid.txt"
         data = {
             "name": "New Drought Map Hub",
+            "country": "Testland",
             "geojson_file": invalid_file.open("rb"),
             "organizations": [
                 {
@@ -223,6 +295,7 @@ class SetupAppAPITest(APITestCase):
         url = reverse("setup", kwargs={"version": "v1"})
         data = {
             "name": "New Drought Map Hub",
+            "country": "Testland",
             "geojson_file": self.geojson_file.open("rb"),
             "organizations": [],
         }
@@ -260,6 +333,7 @@ class SetupAppAPITest(APITestCase):
         url = reverse("setup", kwargs={"version": "v1"})
         data = {
             "name": "New Drought Map Hub",
+            "country": "Testland",
             "geojson_file": self.geojson_file.open("rb"),
         }
         # Add organization with missing name (invalid data)
