@@ -32,7 +32,7 @@ export default async function middleware(request) {
     if (reqConfig.ok && configData?.is_configured) {
       response.cookies.set({
         name: "appConfig",
-        value: "configured",
+        value: JSON.stringify(configData),
         httpOnly: true,
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1 day
       });
