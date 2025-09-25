@@ -1,4 +1,10 @@
-import Link from "next/link";
+"use client";
+
+import { useMemo } from "react";
+import { Steps, Typography } from "antd";
+import { usePathname } from "next/navigation";
+
+const { Title } = Typography;
 
 const steps = [
   { id: 1, label: "Step 1: Application Setup", href: "/setup/step-1" },
@@ -7,30 +13,28 @@ const steps = [
 ];
 
 const InstallLayout = ({ children }) => {
+  const pathName = usePathname();
+
+  // Determine the active step based on the current path
+  // get the current path from next router
+  const activeIndex = useMemo(() => {
+    const step = steps.find((s) => s.href === pathName);
+    return step ? steps.indexOf(step) : null;
+  }, [pathName]);
+
   return (
-    <div style={{ display: "flex", minHeight: "calc(100vh - 73px)" }}>
-      <aside
-        style={{
-          width: "250px",
-          padding: "20px",
-          background: "#f0f0f0",
-          borderRight: "1px solid #ddd",
-        }}
-      >
-        <h2>Installation Wizard</h2>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+    <div className="container w-full min-h-[calc(100vh-73px)] py-4 flex flex-col gap-3">
+      <Title level={2} className="text-center">
+        Drought-Map Hub Installation Wizard
+      </Title>
+      <div className="w-full flex justify-center align-center">
+        <Steps current={activeIndex} className="w-full max-w-3xl px-2">
           {steps.map((step) => (
-            <li key={step.id} style={{ marginBottom: "10px" }}>
-              <Link href={step.href}>
-                <span style={{ textDecoration: "none", color: "#333" }}>
-                  {step.label}
-                </span>
-              </Link>
-            </li>
+            <Steps.Step key={step.id} title={step.label} />
           ))}
-        </ul>
-      </aside>
-      <main style={{ flex: 1, padding: "20px" }}>{children}</main>
+        </Steps>
+      </div>
+      <main className="container flex-1 p-5">{children}</main>
     </div>
   );
 };
