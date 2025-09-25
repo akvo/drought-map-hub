@@ -29,3 +29,11 @@ curl -s -k -u "${ADMIN_USER}:${ADMIN_PASSWORD}" \
     "${GEOSERVER_PUBLIC_LOCATION}/rest/settings.xml"
 
 echo "Post-installation script completed."
+
+# Restart backend container in app directory to apply changes
+cd app || exit
+echo "Restarting backend container to apply changes..."
+docker compose restart backend
+docker compose exec backend python manage.py generate_administrations_seeder
+docker compose exec backend python manage.py generate_config
+echo "Backend container restarted."
