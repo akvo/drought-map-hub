@@ -30,13 +30,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
 class SetupSerializer(serializers.ModelSerializer):
     organizations = OrganizationSerializer(many=True, write_only=True)
     geojson_file = serializers.FileField(write_only=True)
+    map_center = serializers.JSONField(required=False, allow_null=True)
 
     class Meta:
         model = SiteConfig
         fields = [
             'uuid',
             'name',
+            'country',
             'geojson_file',
+            'map_center',
+            'map_name_key',
             'organizations',
             'created_at',
             'updated_at'
@@ -123,7 +127,10 @@ class SetupSerializer(serializers.ModelSerializer):
 
         # Process the GeoJSON file and save it as TopoJSON
         try:
-            process_geojson_file(geojson_file)
+            process_geojson_file(
+                geojson_file=geojson_file,
+                map_name_key=validated_data.get('map_name_key'),
+            )
         except ValueError as e:
             raise serializers.ValidationError({
                 'geojson_file': str(e)
@@ -161,9 +168,10 @@ class SetupSerializer(serializers.ModelSerializer):
 
         # Extract geojson_file if provided
         geojson_file = validated_data.pop('geojson_file', None)
+        map_name_key = validated_data.get('map_name_key', None)
         if geojson_file:
             try:
-                process_geojson_file(geojson_file)
+                process_geojson_file(geojson_file, map_name_key=map_name_key)
                 instance.geojson_file = geojson_file
                 instance.save()
             except ValueError as e:
@@ -195,7 +203,9 @@ class SetupResponseSerializer(serializers.ModelSerializer):
         fields = [
             'uuid',
             'name',
+            'country',
             'geojson_file',
+            'map_center',
             'created_at',
             'updated_at',
             'is_configured',
@@ -422,3 +432,15 @@ class InitialUserResponseSerializer(serializers.Serializer):
 
     class Meta:
         fields = ['name', 'email', 'reviewers']
+
+
+class CountrySerializer(serializers.Serializer):
+    name = serializers.CharField(read_only=True)
+    alpha_2 = serializers.SerializerMethodField(read_only=True)
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_alpha_2(self, obj):
+        return obj.get('alpha-2', '')
+
+    class Meta:
+        fields = ['name', 'alpha_2']
