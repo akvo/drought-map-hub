@@ -602,7 +602,8 @@ class ExportMapAPI(APIView):
         }
         # Step 2: Convert TopoJSON to GeoJSON using the topojson library
         # Create a Topology object from the loaded TopoJSON data
-        topology = tp.Topology(topojson_data)
+        # TODO: make this dynamic
+        topology = tp.Topology(topojson_data, object_name="eswatini")
         # Convert the TopoJSON to GeoJSON
         geojson_data = topology.to_geojson()
 
