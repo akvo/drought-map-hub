@@ -231,7 +231,8 @@ class CDIGeonodeAPI(APIView):
         ):
             cdi_id = serializer.validated_data["id"]
             response = requests.get(
-                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}"
+                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}",
+                headers={'Host': settings.GEONODE_HOST}
             )
             data = response.json().get("resource", None)
             if response.status_code == 200 and data:
@@ -301,6 +302,7 @@ class CDIGeonodeAPI(APIView):
         response = requests.get(
             url,
             auth=(username, password),
+            headers={'Host': settings.GEONODE_HOST}
         )
         if response.status_code == 200:
             data = response.json()
@@ -600,7 +602,7 @@ class ExportMapAPI(APIView):
         }
         # Step 2: Convert TopoJSON to GeoJSON using the topojson library
         # Create a Topology object from the loaded TopoJSON data
-        topology = tp.Topology(topojson_data, object_name="eswatini")
+        topology = tp.Topology(topojson_data)
         # Convert the TopoJSON to GeoJSON
         geojson_data = topology.to_geojson()
 
