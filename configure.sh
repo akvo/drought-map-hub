@@ -25,6 +25,64 @@ read_with_default() {
     fi
 }
 
+# Function to read masked input (shows '*' for each character)
+read_with_mask() {
+    local prompt="$1"
+    local default="$2"
+    local value
+
+    # If running in a non-interactive shell, fall back to default or empty
+    if [ ! -t 0 ]; then
+        if [ -n "$default" ]; then
+            echo "$default"
+        else
+            echo ""
+        fi
+        return
+    fi
+
+    if [ -n "$default" ]; then
+        # Use read -s to hide input; print '*' feedback while typing
+        # This implementation uses stty to disable echo and reads one char at a time
+        echo -n "$prompt [$default]: "
+    else
+        echo -n "$prompt: "
+    fi
+
+    # Disable echo
+    stty -echo -icanon
+    value=""
+    while IFS= read -r -n1 char; do
+        # Enter/Return (LF or CR)
+        if [[ "$char" == $'\n' || "$char" == $'\r' ]]; then
+            break
+        fi
+        # Backspace handling (127 DEL)
+        if [[ $(printf '%d' "'${char}'") -eq 127 ]]; then
+            if [ -n "$value" ]; then
+                # remove last char from value
+                value="${value%?}"
+                # move cursor back, overwrite with space, move back again
+                echo -n $'\b \b'
+            fi
+        else
+            # append char and print asterisk
+            value+="$char"
+            echo -n "*"
+        fi
+    done
+    # Restore terminal settings
+    stty echo icanon
+    echo
+
+    # If user entered nothing and default exists, use default
+    if [ -z "$value" ] && [ -n "$default" ]; then
+        echo "$default"
+    else
+        echo "$value"
+    fi
+}
+
 # Function to validate latitude
 validate_latitude() {
     local lat="$1"
@@ -74,15 +132,15 @@ echo "1. Email Configuration:"
 EMAIL_HOST=$(read_with_default "   1.1 EMAIL_HOST" "smtp.gmail.com")
 EMAIL_PORT=$(read_with_default "   1.2 EMAIL_PORT" "587")
 EMAIL_USE_TLS=$(read_with_default "   1.3 EMAIL_USE_TLS" "True")
-EMAIL_HOST_USER=$(read_with_default "   1.4 EMAIL_HOST_USER" "your-email@example.com")
-EMAIL_HOST_PASSWORD=$(read_with_default "   1.5 EMAIL_HOST_PASSWORD" "your-email-password")
+EMAIL_HOST_USER=$(read_with_mask "   1.4 EMAIL_HOST_USER" "your-email@example.com")
+EMAIL_HOST_PASSWORD=$(read_with_mask "   1.5 EMAIL_HOST_PASSWORD" "your-email-password")
 EMAIL_FROM=$(read_with_default "   1.6 EMAIL_FROM" "noreply@example.com")
 
 # 2. Earth data credentials (for NASA data access)
 echo
 echo "2. Earth data credentials (for NASA data access)"
 EARTHDATA_USERNAME=$(read_with_default "   2.1 Username" "")
-EARTHDATA_PASSWORD=$(read_with_default "   2.2 Password" "")
+EARTHDATA_PASSWORD=$(read_with_mask "   2.2 Password" "")
 
 # 3. Domain configuration
 echo
@@ -125,7 +183,7 @@ while true; do
                 # Set default GEONODE_HOST based on GEONODE_BASE_URL or use default
                 GEONODE_HOST=$(echo "$GEONODE_BASE_URL" | sed 's|.*://||' | sed 's|/.*||')
                 GEONODE_ADMIN_USERNAME=$(read_with_default "   Geonode Admin Username" "admin")
-                GEONODE_ADMIN_PASSWORD=$(read_with_default "   Geonode Admin Password" "youradminpassword")
+                GEONODE_ADMIN_PASSWORD=$(read_with_mask "   Geonode Admin Password" "youradminpassword")
                 ;;
             3)
                 SERVICE_PARAM="cdi"
@@ -133,7 +191,7 @@ while true; do
                 echo "CDI service selected. Please provide Geonode instance configuration:"
                 GEONODE_URL=$(read_with_default "   Geonode URL" "http://localhost")
                 GEONODE_USERNAME=$(read_with_default "   Geonode Username" "admin")
-                GEONODE_PASSWORD=$(read_with_default "   Geonode Password" "yourgeonodepassword")
+                GEONODE_PASSWORD=$(read_with_mask "   Geonode Password" "yourgeonodepassword")
                 ;;
             4) SERVICE_PARAM="geonode" ;;
         esac
