@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import { api, auth } from "@/lib";
+import { api, auth, getAppConfig } from "@/lib";
 import { FeedbackSection, LogoSection, Navbar } from "@/components";
 
 import dayjs from "dayjs";
@@ -18,7 +18,7 @@ const PublicMap = dynamic(() => import("../../components/Map/PublicMap"), {
 
 const BrowsePage = async ({ searchParams }) => {
   const session = await auth.getSession();
-
+  const appConfig = await getAppConfig();
   const dates = await api("GET", "/dates");
   const mapID = searchParams?.date || dates?.[0]?.value;
   if (!mapID || mapID === "undefined") {
@@ -33,7 +33,7 @@ const BrowsePage = async ({ searchParams }) => {
         <div className="w-full space-y-2">
           <div className="w-full border-b border-b-neutral-200 pb-4">
             <h1 className="text-2xl xl:text-3xl font-bold">
-              {APP_SETTINGS.title} - Browse Map
+              {appConfig?.name || APP_SETTINGS.title} - Browse Map
             </h1>
           </div>
           <div className="w-full flex flex-col lg:flex-row align-center justify-between border-b border-b-neutral-200 py-3">

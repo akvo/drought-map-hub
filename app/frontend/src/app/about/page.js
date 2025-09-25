@@ -1,12 +1,15 @@
-import { auth } from "@/lib";
+import { auth, getAppConfig } from "@/lib";
 import { FeedbackSection, LogoSection, Navbar } from "@/components";
 import {
+  APP_SETTINGS,
   DROUGHT_CATEGORY_COLOR,
   DROUGHT_CATEGORY_VALUE,
 } from "@/static/config";
 
 const AboutPage = async () => {
   const session = await auth.getSession();
+  const appConfig = await getAppConfig();
+  const twgOrgs = appConfig?.organizations?.filter((org) => org.is_twg) || [];
   return (
     <div className="w-full min-h-screen">
       <Navbar session={session} />
@@ -14,17 +17,17 @@ const AboutPage = async () => {
         <div className="w-full space-y-2">
           <div className="w-full">
             <h1 className="text-2xl xl:text-3xl font-bold text-gray-800">
-              About the Eswatini Drought Monitor
+              About {appConfig?.name || APP_SETTINGS.title}
             </h1>
           </div>
         </div>
         <p className="text-gray-700 border-b-2 border-b-neutral-400 pb-6">
-          The <strong>Eswatini Drought Monitor</strong> provides a monthly
-          assessment of drought conditions across the country using a
+          The <strong>{appConfig?.name || APP_SETTINGS.title}</strong> provides
+          a monthly assessment of drought conditions across the country using a
           scientifically robust indicator known as the{" "}
           <strong>Composite Drought Indicator (CDI)</strong>. The system is
           designed to offer real-time insights to everyone involved in proactive
-          drought preparedness and response in the Kingdom of Eswatini.
+          drought preparedness.
         </p>
         <h2 className="text-xl font-semibold text-gray-800 pt-4">
           What is the Composite Drought Indicator (CDI)?
@@ -96,7 +99,7 @@ const AboutPage = async () => {
           </ol>
         </div>
         <h2 className="text-xl font-semibold text-gray-800">
-          What Do the CDI Categories Mean?
+          What do the CDI Categories mean?
         </h2>
         <div className="w-full text-gray-700 space-y-4 border-b-2 border-b-neutral-400 pb-6">
           <p>
@@ -201,12 +204,25 @@ const AboutPage = async () => {
           Who is Involved in Validation?
         </h2>
         <div className="text-gray-700 pb-12 space-y-4">
-          <p>
-            The <b>Technical Working Group (TWG)</b>—comprising representatives
-            from Eswatini’s NDMA, the Ministry of Agriculture, MET, Department
-            of Water Affairs (DWA) and the University of Eswatini (UNESWA)
-            —plays a crucial role in the review and validation process.
-          </p>
+          {twgOrgs?.length ? (
+            <div>
+              <p>
+                The CDI maps are reviewed and validated by the following
+                Technical Working Group (TWG) organizations:
+              </p>
+              <ul className="list-disc list-inside pl-4 leading-8">
+                {twgOrgs.map((org) => (
+                  <li key={org.id}>{org.name}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p>
+              The CDI maps are reviewed and validated by a Technical Working
+              Group (TWG) comprising representatives from relevant
+              organizations.
+            </p>
+          )}
           <div className="w-full">
             <p>Their responsibilities include:</p>
             <ul className="list-disc list-inside pl-4 leading-8">

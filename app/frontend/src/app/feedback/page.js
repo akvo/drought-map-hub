@@ -130,8 +130,7 @@ const FeedbackPage = () => {
               </ul>
               <div className="mt-6 p-4 bg-blue-100 border-l-4 border-l-blue-800">
                 <p className="text-sm text-blue-800 font-medium">
-                  Your feedback will be sent to all Eswatini Drought Monitor
-                  admins.
+                  Your feedback will be sent to all admins.
                 </p>
               </div>
               <p className="mt-4 text-sm">Thank you for helping us improve!</p>
