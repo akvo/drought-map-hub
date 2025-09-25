@@ -1,7 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Button,
@@ -56,7 +56,7 @@ const PublicationsPage = () => {
       render: (_, record) => {
         return (
           <a role="button" onClick={() => setPreview(record)}>
-            <Image
+            <img
               width={100}
               height={100}
               src={record?.thumbnail_url || "/images/no-thumbnail.png"}
