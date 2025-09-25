@@ -3,8 +3,11 @@ from django.db import models
 
 class SiteConfig(models.Model):
     uuid = models.CharField(max_length=36, unique=True)
-    name = models.CharField(max_length=255)
-    geojson_file = models.CharField(max_length=255, blank=True, null=True)
+    name = models.CharField(max_length=155)
+    country = models.CharField(max_length=155, blank=True, null=True)
+    geojson_file = models.CharField(max_length=191, blank=True, null=True)
+    map_center = models.JSONField(blank=True, null=True)
+    map_name_key = models.CharField(max_length=55, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

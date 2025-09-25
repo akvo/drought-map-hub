@@ -52,10 +52,16 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("uuid", models.CharField(max_length=36, unique=True)),
-                ("name", models.CharField(max_length=255)),
+                ("name", models.CharField(max_length=155)),
+                ("country", models.CharField(blank=True, max_length=155, null=True)),
                 (
                     "geojson_file",
-                    models.CharField(blank=True, max_length=255, null=True),
+                    models.CharField(blank=True, max_length=191, null=True),
+                ),
+                ("map_center", models.JSONField(blank=True, null=True)),
+                (
+                    "map_name_key",
+                    models.CharField(blank=True, max_length=55, null=True),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
