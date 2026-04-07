@@ -214,3 +214,14 @@ This script performs the following essential tasks:
 *   Verify that GeoServer is accessible at the configured public location before running the script
 
 The DMH configuration is now complete and ready for use.
+
+## 6. Video Guides
+
+Step-by-step video recordings for setting up and using the Drought-map Hub:
+
+1. [Step 1 - Clone the repo and intial setup](https://www.loom.com/share/119c24c2d13441a9b8b99c031a3b470a)
+2. [Step 2 - Setting Up User Accounts and Configurations for Admin and Reviewers](https://www.loom.com/share/61877e97c20a4809a88d879d965f1694)
+3. [Step 3 - Configuring Remote VM Access and Path Adjustments](https://www.loom.com/share/e615c3a3730f4223abd9023a6c8297fc)
+4. [Step 4 - Running a Job with Sample Data Setup](https://www.loom.com/share/369c95fa83794854b78ae3f11651a9b8)
+5. [Step 5 - Review Process Overview and Next Steps](https://www.loom.com/share/1fe2289b15844ec3bab46b4d6c57af90)
+6. [Step 6 - Validation Process Overview](https://www.loom.com/share/afff948ab6734390a7e3cdb2885d640d)
