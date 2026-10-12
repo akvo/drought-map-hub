@@ -79,7 +79,10 @@ class PublicationsSeederCommandTestCase(TestCase):
             "resources": []
         }
 
-    @patch("django_q.tasks.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands."
+        "publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_run_publications_seeder(self, mock_get, mock_async_task):
         # Configure the mock to return a response with JSON data
@@ -115,7 +118,10 @@ class PublicationsSeederCommandTestCase(TestCase):
         self.assertEqual(publication.status, PublicationStatus.published)
         self.assertEqual(publication.initial_values, {})
 
-    @patch("django_q.tasks.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands."
+        "publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_publications_seeder_with_category_argument(
         self, mock_get, mock_async_task
@@ -141,7 +147,10 @@ class PublicationsSeederCommandTestCase(TestCase):
             headers={"Host": "geonode"},
         )
 
-    @patch("django_q.tasks.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands."
+        "publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_existing_publication_update(self, mock_get, mock_async_task):
         # Create an existing publication without validated_values
@@ -201,7 +210,10 @@ class PublicationsSeederCommandTestCase(TestCase):
         total_publications = Publication.objects.count()
         self.assertEqual(total_publications, 0)
 
-    @patch("django_q.tasks.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands."
+        "publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_pagination_handling(self, mock_get, mock_async_task):
         # Mock first page response
@@ -257,7 +269,10 @@ class PublicationsSeederCommandTestCase(TestCase):
         total_publications = Publication.objects.count()
         self.assertEqual(total_publications, 25)
 
-    @patch("django_q.tasks.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands."
+        "publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_date_parsing_and_due_date_calculation(
         self, mock_get, mock_async_task
@@ -311,7 +326,10 @@ class PublicationsSeederCommandTestCase(TestCase):
         expected_due_date = base_date + timedelta(days=30)
         self.assertEqual(pub_second_date.due_date, expected_due_date.date())
 
-    @patch("django_q.tasks.async_task")
+    @patch(
+        "api.v1.v1_publication.management.commands."
+        "publications_seeder.async_task"
+    )
     @patch("requests.get")
     def test_job_creation_details(self, mock_get, mock_async_task):
         mock_get.return_value.status_code = 200
