@@ -30,8 +30,20 @@ def get_dataset_between(start, end):
     return dataset_files
 
 
+def get_all_datasets():
+    dataset_files = []
+    if not os.path.exists(dataset_path):
+        print("Dataset path does not exist.")
+        return dataset_files
+    for root, _, files in os.walk(dataset_path):
+        for file in files:
+            if file.endswith(dataset_type):
+                dataset_files.append(os.path.join(root, file))
+    return dataset_files
+
+
 def main():
-    dataset_files = get_dataset_between("202201", "202501")
+    dataset_files = get_all_datasets()
     try:
         categories = get_categories(f"{geonode_url}api/categories/")
         for dataset_file in dataset_files:

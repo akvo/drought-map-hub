@@ -29,7 +29,7 @@ const IframeMapPage = ({ searchParams }) => {
         if (!isNaN(id)) {
           setLoading(true);
           const { validated_values } = await api("GET", `/map/${id}`);
-          if (validated_values) {
+          if (Array.isArray(validated_values)) {
             setData(validated_values);
           }
           setLoading(false);
