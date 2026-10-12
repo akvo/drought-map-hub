@@ -4,3 +4,6 @@ __pycache__
 /tmp
 .coverage
 .coverage.*
+
+# Per-instance country boundaries (see country.topojson.example)
+/source/country.topojson
