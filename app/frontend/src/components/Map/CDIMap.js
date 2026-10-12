@@ -13,12 +13,13 @@ import {
 import { useAppContext } from "@/context/AppContextProvider";
 import { Flex, Spin } from "antd";
 import CDIMapLegend from "./CDIMapLegend";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getAppConfig } from "@/lib";
 
 const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
   const map = useMap();
   const { refreshMap } = useAppContext();
+  const layerRef = useRef(null);
 
   if (refreshMap) {
     return (
@@ -35,6 +36,15 @@ const CDIGeoJSON = ({ geoData, onEachFeature, style }) => {
       weight={1}
       onEachFeature={(feature, layer) => onEachFeature(feature, layer, map)}
       style={style}
+      ref={(ref) => {
+        layerRef.current = ref;
+        if (ref) {
+          const bounds = ref.getBounds();
+          if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [10, 10] });
+          }
+        }
+      }}
     />
   );
 };
@@ -105,8 +115,8 @@ const CDIMap = ({
       <Map
         center={mapCenter}
         height={80}
-        zoom={9}
-        minZoom={6}
+        zoom={6}
+        minZoom={5}
         scrollWheelZoom={false}
         {...props}
       >

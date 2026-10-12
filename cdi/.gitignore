@@ -186,3 +186,6 @@ MERRA2_100.tavgM_2d_slv_Nx.*
 
 # Ignore GeoNode upload log files
 geonode_category.json
+
+# Per-instance CDI config (see cdi_project_settings.json.example)
+/config/cdi_project_settings.json

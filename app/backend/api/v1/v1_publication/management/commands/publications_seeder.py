@@ -55,6 +55,7 @@ class Command(BaseCommand):
             response = requests.get(
                 url,
                 auth=(username, password),
+                headers={"Host": settings.GEONODE_HOST},
             )
             if response.status_code != 200:
                 self.stdout.write(

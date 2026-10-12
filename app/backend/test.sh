@@ -12,6 +12,12 @@ fi
 pip -q install --upgrade pip
 pip -q install --cache-dir=.pip -r requirements.txt
 
+# source/country.topojson is per-instance and gitignored; a clean checkout (CI)
+# only has the committed example. Seed it so tests that load it can run.
+if [ ! -f source/country.topojson ]; then
+    cp source/country.topojson.example source/country.topojson
+fi
+
 ./manage.py migrate
 
 echo "Running tests"

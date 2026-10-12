@@ -600,10 +600,14 @@ class ExportMapAPI(APIView):
             item["administration_id"]: item["category"]
             for item in validated_values
         }
-        # Step 2: Convert TopoJSON to GeoJSON using the topojson library
-        # Create a Topology object from the loaded TopoJSON data
-        # TODO: make this dynamic
-        topology = tp.Topology(topojson_data, object_name="eswatini")
+        # Step 2: Convert TopoJSON to GeoJSON using the topojson library.
+        # The country file has a single named object; use whatever it is
+        # named (e.g. "eswatini", "kenya", "data") so this works for any
+        # country, not just Eswatini.
+        object_names = list(topojson_data.get("objects", {}).keys())
+        if not object_names:
+            raise ValueError("No objects found in source/country.topojson")
+        topology = tp.Topology(topojson_data, object_name=object_names[0])
         # Convert the TopoJSON to GeoJSON
         geojson_data = topology.to_geojson()
 
