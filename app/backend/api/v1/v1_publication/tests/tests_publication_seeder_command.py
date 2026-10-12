@@ -16,6 +16,7 @@ from api.v1.v1_jobs.models import Jobs, JobStatus, JobTypes
     USE_TZ=False,
     TEST_ENV=True,
     GEONODE_BASE_URL="http://geonode:8000",
+    GEONODE_HOST="geonode",
     GEONODE_ADMIN_USERNAME="admin",
     GEONODE_ADMIN_PASSWORD="admin",
 )
@@ -136,7 +137,8 @@ class PublicationsSeederCommandTestCase(TestCase):
         )
         mock_get.assert_called_with(
             expected_url,
-            auth=("admin", "admin")
+            auth=("admin", "admin"),
+            headers={"Host": "geonode"},
         )
 
     @patch("django_q.tasks.async_task")
