@@ -49,12 +49,12 @@ The short list sent to the colleague, in four groups:
 | B-5 | This is future-proofing. No second country is committed yet. | 09-30 |
 | B-6 | Client data appears in Insights only. It never feeds review or validation. | 09-30 |
 | B-7 | IKS and risk level are also switchable modules. | 09-30 |
-| MC-2 D-1 | **Ask NDMC for their method first → compute in-house → NDMC validates.** Human expert knowledge comes before inferred assumptions. | 09-30, revised 10-06 |
+| MC-2 D-1 | **In-house first:** build with working defaults, self-validate against NDMC's published files, treat NDMC's reply as a sharpener (never a blocker). `inhouse` mode must run with zero NDMC files/replies. | 09-30, rev 10-06, **in-house-first 10-28** |
 | MC-2 D-2 | Baseline per component: **40 years for SPI/ESI/SM, 14 years for EVI2** (VIIRS starts in 2012). Option 1 was chosen; MODIS stitching is deferred. | 09-30 |
 | MC-2 D-7 | Full CDI where the data supports it. **SPI-only "rainfall drought index"** for atoll states (Marshall Islands). | 10-06 (proposed) |
 | MC-1 D-1 | One instance per country, not multi-tenant. | 09-30 (proposed) |
 | CDP-0 OQ-1 | No live non-Southern-Africa instance; drop and tag the legacy LST/NDVI pipeline. | 10-12 |
-| CDP-0 OQ-2 | Port the eswatini `v1_geonode` publication API into the generic app; enable the ported sync job. | 10-12 |
+| CDP-0 OQ-2 | Extract the eswatini `v1_publication` geonode push endpoints into a new, optional `v1_geonode` app in the generic hub; enable the ported sync job. | 10-12 |
 | CDP-0 OQ-3/4 | No wholesale app move: port backend APIs first, frontend iteratively. Keep both CDI repos. | 10-12 |
 | MC-2 OQ-5 | One VM, one config per country (so prefix GeoNode categories per country). | 10-12 |
 | MC-2 OQ-4 | Accept the ERA5-Land licence now. | 10-12 |
@@ -79,46 +79,65 @@ The short list sent to the colleague, in four groups:
 | Pacific: Marshall Islands atolls have CHIRPS data but **0 FLDAS land cells**. Fiji works on its main islands but **crosses 180°**. `config_reader`'s `range(w_lon, e_lon, 50)` returns an empty grid when `w_lon > e_lon`. | 10-06, 10-12 |
 | Earth Engine is not available to DIH: no free tier for this use. | earlier |
 
+### Data sources — URL recap
+
+In-house pipeline inputs (full detail in [CDP-1](1-cdi-data-pipeline/CDP-1_raw-data-fetch.md) §1/§6/§8):
+
+| CDI input | Provider · host | Access path | Auth | History |
+|---|---|---|---|---|
+| **SPI** (rainfall) | CHIRPS-2.0 · `data.chc.ucsb.edu` | `/products/CHIRPS-2.0/global_monthly/cogs/chirps-v2.0.YYYY.MM.cog` (windowed `/vsicurl/`) | none | 1981 → |
+| **SM** (soil moisture) | FLDAS Noah · Earthdata Cloud OPeNDAP `opendap.earthdata.nasa.gov` | `/collections/C1563089663-GES_DISC/granules/FLDAS_NOAH01_C_GL_M.001:…` (DAP4 bbox) | Earthdata (`EARTHDATA_USERNAME/PASSWORD`) | 1982 → |
+| **ESI** (evaporative stress) | ERA5-Land · CDS `cds.climate.copernicus.eu` | dataset `reanalysis-era5-land-monthly-means`, `area=[N,W,S,E]`; vars `total_evaporation`, `potential_evaporation` | `ECMWF_API_KEY` (cdsapi); **ERA5-Land licence must be accepted** | 1950 → |
+| **EVI2** (vegetation) | VIIRS · LP DAAC `data.lpdaac.earthdatacloud.nasa.gov` (granules via `cmr.earthdata.nasa.gov`) | `VNP13A3.002` → `VJ113A3.002`; layer `1 km monthly EVI2` + reliability | Earthdata | 2012 → / 2018 → |
+| **NDMC reference** (`ndmc` mode + CDP-5 validation) | NDMC · `droughtcenter.unl.edu` | `/Outgoing/Regional_Percentiles/Southern_Africa/` | none | 2012 → (Southern Africa only) |
+
+Host allow-list (CDP-1 §8): `data.chc.ucsb.edu`, `opendap.earthdata.nasa.gov`, `data.lpdaac.earthdatacloud.nasa.gov`, `cmr.earthdata.nasa.gov`, `urs.earthdata.nasa.gov`, `cds.climate.copernicus.eu`.
+
 ---
 
 ## 5. NDMC thread status
 
 - **Contacts:** the NDMC methodology contacts are held privately (not in this repo). The relationship runs through the Akvo leads.
-- **Methodology email:** subject "CDI for countries beyond Southern Africa – questions on your methodology". **Both sent — methodology 2026-10-06, follow-up 2026-10-12; no reply yet as of 2026-10-12.** Iwan owns and sends this correspondence directly.
-- **Questions:**
-  - Q1: ESI formula
-  - Q2: Gaussian vs empirical percentiles, and the 40-year window
-  - Q3: EVI2 history, and the move to NOAA-20/21
-  - Q4: FLDAS soil-moisture weights
-  - Q5: CHIRPS v3 and SPI calibration
-  - Q6: the example code they offered
-  - Q7: suitability for small island states
-- The verified references for Q1–Q6, and the likely questions back, are in [`ndmc-method-questions-references.md`](ndmc-method-questions-references.md).
+- **Methodology email:** subject "CDI for countries beyond Southern Africa – questions on your methodology". **Both sent — methodology 2026-10-06, follow-up 2026-10-12.** NDMC replied on the Pacific/small-island question on 2026-10-28 (see MC-2 OQ-7); no reply yet on the method questions. Iwan owns and sends this correspondence directly.
+- **Open method questions (each has a working default):**
+  - ESI formula
+  - Percentile method (Gaussian vs empirical) and the 40-year window
+  - EVI2 history and the move to NOAA-20/21
+  - FLDAS soil-moisture weights
+  - CHIRPS version and SPI calibration
+  - the example code they offered
+  - suitability for small island states
+- The verified references for these questions, and the likely questions back, are kept in an internal method-references note (not in this repo).
 - **Resolved 2026-10-12:** the "new synthetic/emulated data source" Iwan mentioned is NDMC's Southern-Africa Regional_Percentiles (https://droughtcenter.unl.edu/Outgoing/Regional_Percentiles/Southern_Africa/) — the generation-2 input already used by the Eswatini CDI (`eswatini-droughtmap-hub-cdi`). It is not a new source and does not change the Q1/Q3 wording.
 
 ---
 
-## 6. Document map (this folder)
+## 6. Two workstreams (this folder)
 
-| File | What |
-|---|---|
-| [`multi-country-deployment.md`](multi-country-deployment.md) | **MC-1**: hub side. Optional modules (`DIH_MODULES`), `source/` as the country pack, weather-off → progress-only review map, the `v1_datasets` client table. It was **written against the Eswatini hub's code** (file:line refs). Re-map it to `drought-map-hub/app` before executing; see CDP-0 OQ-3. |
-| [`cdi-inhouse-percentiles.md`](cdi-inhouse-percentiles.md) | **MC-2**: pipeline design. Generations of the pipeline, measured access, decisions D-1…D-7, Pacific check (§1.2b). |
-| [`ndmc-method-questions-references.md`](ndmc-method-questions-references.md) | Reference pack for the NDMC email (Q1–Q6). |
-| [`1-cdi-data-pipeline/README.md`](1-cdi-data-pipeline/README.md) | **Navigation index** for workstream 1. |
-| `1-cdi-data-pipeline/CDP-0 … CDP-6` | Sub-task plans: port → fetch → grid → derive → percentiles → validate → integrate. |
+All planning groups under **two top-level plan tasks**:
 
-The workstreams for modules (2), country config (3) and client data (4) have no folder yet. MC-1 holds their design.
+### Workstream 1 — Plan tasks for the global CDI data pipeline
+Make the CDI computable **in-house** for any country (independence from NDMC).
+- **Design:** [`cdi-inhouse-percentiles.md`](1-cdi-data-pipeline/cdi-inhouse-percentiles.md) (MC-2) — pipeline generations, measured access, decisions D-1…D-7, Pacific check (§1.2b).
+- **Sub-tasks:** [`1-cdi-data-pipeline/README.md`](1-cdi-data-pipeline/README.md) — **CDP-0 … CDP-6** (port → fetch → grid → derive → percentiles → self-validate → integrate).
+
+### Workstream 2 — Plan tasks for porting V2 improvements to the generic repo
+Bring the Eswatini hub v2 app features into the generic hub as **optional, country-agnostic modules** (backend-first, frontend iteratively — CDP-0 OQ-3).
+- **Design:** [`multi-country-deployment.md`](2-v2-porting/multi-country-deployment.md) (MC-1) — optional modules (`DIH_MODULES`), `source/` as the country pack, weather-off → progress-only review map, the `v1_datasets` client table. Written against the Eswatini hub's code (file:line refs); re-map to `drought-map-hub/app` when executing.
+- **Sub-tasks:** [`2-v2-porting/README.md`](2-v2-porting/README.md) — **VP-0 … VP-7** (v1_geonode → module system → weather-off UX → config flags → country pack → map framing → admin label → client data).
+
+**CDP-0 is the hinge:** it ports the pipeline (WS-1) and bootstraps the first WS-2 backend module (`v1_geonode`).
 
 ---
 
 ## 7. Next steps
 
 1. ✅ Done (2026-10-12): local work committed/ignored on branch `chore/untrack-instance-config`; CDP-0 OQ-1 answered — no live non-Southern-Africa instance.
-2. Execute **CDP-0** on a new branch, e.g. `feature/port-ndmc-cdi-pipeline`. It includes porting the `v1_geonode` publication API (CDP-0 OQ-2).
+2. Execute **CDP-0** on a new branch, e.g. `feature/port-ndmc-cdi-pipeline`. It includes creating the new optional `v1_geonode` app (CDP-0 OQ-2 / D-4).
 3. Copy `EARTHDATA_USERNAME`, `EARTHDATA_PASSWORD` and `ECMWF_API_KEY` into `drought-map-hub/cdi/.env`, and **accept the ERA5-Land licence on CDS now** (MC-2 OQ-4).
-4. Start CDP-2 → CDP-1 (VNP13A3 history **before 1 Nov 2026**) → CDP-3 (SPI/SM/EVI2) → CDP-4 → CDP-5, while NDMC answers.
-5. ✅ Decided (2026-10-12, CDP-0 OQ-3/4): no wholesale v2-app move — port backend APIs first, frontend iteratively; keep both CDI repos.
+4. ⏱️ **Early & time-sensitive (independent of CDP-0):** pin a checksummed NDMC reference snapshot — build/run `fetch_ndmc_reference.py` (CDP-5) to capture the Eswatini `Regional_Percentiles` with SHA256 + `Last-Modified`. NDMC already re-published files once (11 Aug 2026 backfill); pinning now protects the self-validation baseline before it changes again.
+5. Start CDP-2 → CDP-1 (VNP13A3 history **before 1 Nov 2026**) → CDP-3 (SPI/SM/EVI2) → CDP-4 → CDP-5 **without waiting for NDMC** — CDP-5 self-validates against NDMC's published files; NDMC's reply only refines defaults.
+6. ✅ Decided (2026-10-12, CDP-0 OQ-3/4): no wholesale v2-app move — port backend APIs first, frontend iteratively; keep both CDI repos.
 
 ---
 

@@ -2,12 +2,11 @@
 
 ## Feature: Pipeline integration — `percentile_source` switch, scheduling, new-country onboarding, dead-code removal
 
-**Task ID**: CDP-6 (sub-task of [MC-2](../cdi-inhouse-percentiles.md))
+**Task ID**: CDP-6 (sub-task of [MC-2](cdi-inhouse-percentiles.md))
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-12
 **Status**: Draft. **Starts only after CDP-5 passes.**
 **Repo affected**: `drought-map-hub` → `cdi/` (after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port; file/line refs to existing code point at the `eswatini-droughtmap-hub-cdi` source until then)
-**Blocked by NDMC?** Indirectly. It waits for the CDP-5 PASS, which should include NDMC's review.
 
 ---
 
@@ -182,8 +181,8 @@ Onboarding runbook (`docs/onboarding-a-country.md`):
 
 ## 11. References
 
-- Parent design: [MC-2](../cdi-inhouse-percentiles.md) §4.1, §7, §11; D-7
-- Hub side: [MC-1](../multi-country-deployment.md)
+- Parent design: [MC-2](cdi-inhouse-percentiles.md) §4.1, §7, §11; D-7
+- Hub side: [MC-1](../2-v2-porting/multi-country-deployment.md)
 - Code (eswatini source, pre-port): `src/background-job/job.sh` (line 34), `utils.sh` (lines 308, 374), `STEP_0000_execute_all_steps.py` (lines 34-37), `upload_to_geonode_job.py`
 
 ---

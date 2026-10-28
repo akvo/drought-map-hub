@@ -2,12 +2,11 @@
 
 ## Feature: Raw data fetch adapters — CHIRPS, ERA5-Land, FLDAS, VIIRS (bbox subset at the source)
 
-**Task ID**: CDP-1 (sub-task of [MC-2](../cdi-inhouse-percentiles.md))
+**Task ID**: CDP-1 (sub-task of [MC-2](cdi-inhouse-percentiles.md))
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-12
 **Status**: Draft
 **Repo affected**: `drought-map-hub` → `cdi/` (after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port; file/line refs to existing code point at the `eswatini-droughtmap-hub-cdi` source until then)
-**Blocked by NDMC?** Partly. The adapters can be built now. Which ERA5 product to use (ERA5 or ERA5-Land) and which CHIRPS version (v2 or v3) wait for NDMC's answers to Q1 and Q5.
 
 ---
 
@@ -203,8 +202,8 @@ PROVIDERS = {
 
 ## 10. Open Questions
 
-- [ ] **OQ-1**: ERA5 or ERA5-Land? Waits for NDMC Q1. ERA5-Land `pev` is pan evaporation since Nov 2021. **— PENDING NDMC (Q1); working default: ERA5-Land.**
-- [ ] **OQ-2**: CHIRPS-2.0 or 3.0? Waits for NDMC Q5. The hub's normals are on 2.0. **— PENDING NDMC (Q5); working default: CHIRPS-2.0.**
+- [ ] **OQ-1**: ERA5 or ERA5-Land? ERA5-Land `pev` is pan evaporation since Nov 2021. **— PENDING: NDMC to confirm ERA5 vs ERA5-Land; working default: ERA5-Land.**
+- [ ] **OQ-2**: CHIRPS-2.0 or 3.0? The hub's normals are on 2.0. **— PENDING: NDMC to confirm the CHIRPS version; working default: CHIRPS-2.0.**
 - [x] **OQ-3**: Who accepts the ERA5-Land licence on the CDS account behind `ECMWF_API_KEY`? **— RESOLVED 2026-10-12: Iwan accepts the licence now, on the CDS account behind `ECMWF_API_KEY`.**
 - [x] **OQ-4**: Should VIIRS use OPeNDAP subsetting instead of tile download? The research agent saw an OPeNDAP link on the collection, but it is untested. **— RESOLVED 2026-10-12 (default): use tile download; revisit OPeNDAP subsetting in the spike only if tiles prove too heavy.**
 
@@ -212,7 +211,7 @@ PROVIDERS = {
 
 ## 11. References
 
-- Parent design: [MC-2](../cdi-inhouse-percentiles.md) §1.2, §4.2
+- Parent design: [MC-2](cdi-inhouse-percentiles.md) §1.2, §4.2
 - GES DISC OPeNDAP retirement: https://disc.gsfc.nasa.gov/information/tools?title=OPeNDAP%20In%20The%20Cloud
 - Suomi-NPP end of delivery: https://www.earthdata.nasa.gov/data/alerts-outages/suomi-npp-data-product-delivery-cease-november-1-2026
 - Prior art: `akvo/drought-map-hub` `cdi/src/background-jobs/` (`job_00_login.sh`, `utils.sh`), including its pitfalls

@@ -6,7 +6,7 @@
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-09-30
 **Status**: Draft. D-1 and D-2 are decided (2026-09-30), so the spike can start.
-**Repo affected**: `drought-map-hub/cdi` (generic hub), after the [CDP-0](1-cdi-data-pipeline/CDP-0_port-eswatini-pipeline.md) port of `eswatini-droughtmap-hub-cdi`. Not this repo. The design lives here because it is the prerequisite of [`multi-country-deployment.md`](multi-country-deployment.md) (MC-1).
+**Repo affected**: `drought-map-hub/cdi` (generic hub), after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port of `eswatini-droughtmap-hub-cdi`. Not this repo. The design lives here because it is the prerequisite of [`multi-country-deployment.md`](../2-v2-porting/multi-country-deployment.md) (MC-1).
 **Builds on**: `eswatini-droughtmap-hub-cdi/docs/cdi-scale-fix-requirements.md`, `docs/lst-ndvi-retirement-mail.md`, and the generic hub `akvo/drought-map-hub` (`cdi/`).
 
 ---
@@ -100,7 +100,8 @@ Do the four CDI sources actually have data over small and scattered islands? Eac
 - [ ] Only the months that are missing are downloaded. Gaps anywhere in the history are filled, not just the last month.
 - [ ] Each parameter's baseline window is fixed and stored. It is recorded in the NetCDF attributes (`baseline_start`, `baseline_end`, `n_years`).
 - [ ] Ranking is vectorised (numpy) and handles gaps by date, never by an index stride.
-- [ ] `percentile_source` is `ndmc` or `inhouse`, and the default stays `ndmc`. Eswatini production is unchanged until the spike is signed off.
+- [ ] `percentile_source` is `ndmc` or `inhouse`. Existing Eswatini production stays on `ndmc` (no drift) until signed off; a new non-Southern-Africa country defaults to `inhouse`.
+- [ ] **Independence:** an `inhouse` run completes end-to-end with **no NDMC files and no NDMC reply**. NDMC files are read only by the CDP-5 comparison, never by the pipeline.
 - [ ] Pytest covers ranking edge cases (ties, gaps, all-missing pixel), SPI against a published reference series, and the subset-to-grid alignment.
 
 ---
@@ -187,21 +188,23 @@ The login model changes from generation 1's daily `wget` cookie refresh against 
 2. **B. Compute in-house** (this doc).
 3. **A then B.** Send the email now. Run the B spike in parallel as the independence path.
 
-**Decision** (Iwan, 2026-09-30, sequence revised 2026-10-06): **ask NDMC for the method → compute in-house → NDMC validates.**
-- First, ask NDMC how they compute each index, so the initial development follows their expert knowledge instead of what we inferred from their published files (§1.3, D-4, D-6 stay assumptions until they answer).
-- Then compute the percentiles in-house.
-- Then take the results back to NDMC for review.
+**Decision** (Iwan, 2026-09-30; sequence revised 2026-10-06; **in-house prioritised 2026-10-28**): **build in-house first, validate against NDMC's published files, treat NDMC's reply as a sharpener — never a blocker.**
+- Build the in-house pipeline now using the documented working defaults (§1.3, D-4, D-6, and the public references kept in an internal method-references note). Do **not** wait for NDMC to answer.
+- Self-validate against NDMC's already-published Eswatini files (CDP-5 / §9) — this needs no reply from NDMC.
+- Send NDMC the method questions + the CDP-5 report in parallel. Their answers refine the defaults and raise confidence; they do not gate execution.
+
+**Independence principle:** a deployment in `percentile_source: inhouse` must produce a CDI with **zero NDMC files and zero NDMC replies**. Anything that would block a run on NDMC is a bug, not a dependency. NDMC files are touched only by the CDP-5 comparison, never by the pipeline itself. (A single volunteer-scale source already failed once — the 2026 LST disruption — and NDMC may stop publishing the Southern-Africa percentiles at any time, which would break `ndmc` mode. In-house is the **continuity plan**, not a nice-to-have.)
 
 **Rationale**:
-- The business requirement is *every* country, so independence is the goal. A single volunteer-scale source has already failed once (the 2026 LST disruption).
-- Our first validation does not need NDMC: their Eswatini output is already our reference (§9).
-- Arriving with concrete numbers ("our Eswatini CDI matches yours X%; here is where it differs") is a smaller and clearer ask of NDMC than an open-ended request.
+- The business requirement is *every* country, so independence is the goal.
+- Our first validation does not need NDMC: their published Eswatini output is already our reference (§9, CDP-5).
+- Arriving with concrete numbers ("our Eswatini CDI matches yours X%; here is where it differs") is a smaller, clearer ask of NDMC than an open-ended request.
 
-**Safeguard** (superseded on 2026-10-06, because the method email now goes first): ESI gets a **timebox**. NDMC's ESI formula is not public (D-4). If the spike's ESI does not reach agreement within the timebox, the ESI method question goes to NDMC early instead of waiting for the full validation email.
+**ESI first:** ESI carries the most method uncertainty (NDMC's ERA5 formula is not public, D-4), so the spike measures it first. If in-house ESI cannot be reconciled within a short timebox, drop ESI to weight 0 and re-weight (CDP-5 OQ-3) rather than wait.
 
 **Impact**:
-- The path-A "export more regions" request is dropped from the plan.
-- §11 production tasks 5–7 follow a passed spike directly. They no longer wait for NDMC's answer.
+- The path-A "export more regions" request is dropped.
+- §11 production tasks 5–7 follow a passed **self-validation** (CDP-5) directly; they do not wait for NDMC's review.
 
 ### D-2: Baseline window — follow NDMC's 40-year rolling window where the data allows *(DECIDED 2026-09-30: per-component, 40 yrs for SPI/ESI/SM, 14 yrs for EVI2)*
 The brainstorm decision "baseline = all data from 2012" was based on the NDMC file listing. The NDMC mail shows that 2012 is only the **export** window. NDMC ranks against **40-year rolling histories**. Following NDMC therefore means:
@@ -276,9 +279,9 @@ The brainstorm decision "baseline = all data from 2012" was based on the NDMC fi
 **Impact**: `rank_parameter` and its (N−1)/N ceiling bug are retired rather than fixed.
 
 ### D-7: Per-country product profile — the full CDI where the data supports it, SPI-only where it does not
-**Decision** (proposed): every country config declares which inputs it has, through the existing weights. A deployment whose weights leave only SPI publishes the result as a **rainfall drought index**, not a "CDI". MC-1 then labels the map accordingly.
+**Decision** (confirmed, NDMC-backed 2026-10-28): every country config declares which inputs it has, through the existing weights. A deployment whose weights leave only SPI publishes the result as a **rainfall drought index**, not a "CDI". MC-1 then labels the map accordingly.
 
-**Rationale**: §1.2b measured that small atoll states have no SM or ESI data at all. Blending in nodata, or reporting a "combined" index made from one input, would mislead users.
+**Rationale**: §1.2b measured that small atoll states have no SM or ESI data at all. Blending in nodata, or reporting a "combined" index made from one input, would mislead users. NDMC's 2026-10-28 reply confirms this: at small-island scale most remotely-sensed inputs are not viable (they operate globally at ~4 km), and they rely on station data validated against first-order/mesonet stations.
 
 **Impact**:
 - Antimeridian-safe bounds handling is required before Fiji (or any country crossing 180°) can run.
@@ -344,13 +347,13 @@ The D-class thresholds and the per-admin aggregation stay in the hub, unchanged.
   - For the Marshall Islands, would partners accept a rainfall-only product?
   - Do station gauges exist that could feed SPI directly?
 
-  **— PENDING external (Fiji Met Service / RMI Weather Service + NDMC). Working default: adopt the D-7 SPI-only "rainfall drought index" profile for atoll states; the fitness and gauge questions go to the national met services alongside the NDMC method email.**
+  **— NDMC answered 2026-10-28:** real challenges for a CDI on small islands — limited data inputs and island size take most remotely-sensed inputs out of play; only bigger islands get a few pixels (NDMC operates globally at ~4 km). Their approach is to produce indicators from viable **station data** and validate against first-order/mesonet stations where available. This confirms D-7: for atolls, publish a station/SPI-based rainfall drought index, not a satellite "combined" index. **Still pending:** Fiji Met Service / RMI Weather Service on station availability and whether partners accept a station/rainfall-only product.
 - [x] **OQ-1b**: How long is the ESI timebox before the ESI question goes to NDMC early? Proposed: 3 working days. **— N/A 2026-10-12: superseded; the ESI method question is already in the methodology email, which goes first (D-1), so there is no separate timebox.**
 - [x] **OQ-2 (D-2)**: ~~Confirm the 40-year baseline with EVI2 as the 14-year exception~~. Confirmed on 2026-09-30; this replaces the earlier "from 2012" decision.
 - [x] **OQ-3**: What D-class agreement makes the spike a pass? Proposed: ≥ 80% of admin units in the same class, and none more than one class apart. **— RESOLVED 2026-10-12: adopt the proposed threshold as the working pass criterion; TWG/NDRMA confirm (= CDP-5 OQ-1).**
 - [x] **OQ-4**: Accept the ERA5-Land licence on the CDS account that owns `ECMWF_API_KEY`. **— RESOLVED 2026-10-12: accept the licence now on that CDS account (= CDP-1 OQ-3).**
 - [x] **OQ-5**: Where does the pipeline run for a second country: the same VM with a second config, or one VM per country? Disk is now small (bbox subsets), so one VM should be enough. **— RESOLVED 2026-10-12: one VM, one config per country.**
-- [ ] **OQ-6**: CHIRPS-2.0 vs CHIRPS-3.0. NDMC mentions "CHIRPS3". The hub is still on 2.0, and switching must move the normals too. **— PENDING NDMC (Q5); working default: stay on CHIRPS-2.0.**
+- [ ] **OQ-6**: CHIRPS-2.0 vs CHIRPS-3.0. NDMC mentions "CHIRPS3". The hub is still on 2.0, and switching must move the normals too. **— PENDING: NDMC to confirm the CHIRPS version; working default: stay on CHIRPS-2.0.**
 
 ---
 

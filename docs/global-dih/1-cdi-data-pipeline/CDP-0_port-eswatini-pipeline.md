@@ -8,7 +8,6 @@
 **Status**: Draft
 **Source**: `akvo/eswatini-droughtmap-hub-cdi`, `main @ e3651e9`. Port from the **commit**, not the working tree: the working tree has a local edit in `src/background-job/job.sh` that comments out the upload.
 **Target**: `akvo/drought-map-hub`, folder `cdi/`, plus the contract rename in `app/`, `geonode/` and `app/rundeck/`.
-**Blocked by NDMC?** No.
 
 ---
 
@@ -79,6 +78,8 @@ Goal:
   - the legacy LST/NDVI download functions.
 
   Keep all of these in git history, and tag the pre-port commit `legacy-lst-ndvi-pipeline` (D-2).
+- [ ] **Not ported from the source** (`eswatini-droughtmap-hub-cdi`):
+  - `src/data-processing/aggregation/main.py` — a hardcoded prototype (sample `eswatini_sample_CDI.tif` paths, matplotlib, not called by `job.sh`). Production per-admin aggregation lives in the hub, not here.
 - [ ] **Contract rename across the generic hub** (LST/NDVI → ESI/EVI2, add SM):
   - `app/backend/api/v1/v1_rundeck/models.py`: `lst_weight`/`ndvi_weight` become `esi_weight`/`evi2_weight`. `spi_weight` and `sm_weight` already exist. This needs a migration (§3); the serializer and views follow.
   - `app/backend/api/v1/v1_publication/constants.py`: the `ndvi-raster-map`/`lst-raster-map` categories become `evi2-raster-map`/`esi-raster-map`, and `sm-raster-map` is added.
@@ -87,7 +88,7 @@ Goal:
   - `geonode/src/cdi/management/commands/add_cdi_categories.py`: create `esi/evi2/sm-raster-map`. Keep the old categories so existing layers are not orphaned.
   - Frontend: `static/config.js`, `app/settings/page.js`, `app/about/page.js`.
 - [ ] **CI**: the ported cdi pytest suites (`test_cdi_pipeline.py` and the upload/sync tests) pass in the target's CI.
-- [ ] The port is a **new branch** in `drought-map-hub`, e.g. `feature/port-ndmc-cdi-pipeline`, split into reviewable commits: (1) cdi code, (2) docker/CI, (3) app + rundeck + geonode rename, (4) docs.
+- [ ] The port is a **new branch** in `drought-map-hub`, e.g. `feature/port-ndmc-cdi-pipeline`, split into reviewable commits: (1) cdi code, (2) docker/CI, (3) app + rundeck + geonode rename, (4) new optional `v1_geonode` app (geonode publication-push endpoints), (5) docs.
 
 ---
 
@@ -109,6 +110,19 @@ Goal:
 #    existing rows are not rewritten.
 # 3. Reversible: RenameField back, restore the old defaults.
 ```
+
+### New optional app: `api/v1/v1_geonode` (generic hub)
+
+The geonode publication-push endpoint has **no app of its own** in the eswatini hub — it lives in `v1_publication` (`backend/api/v1/v1_publication/urls.py`: `geonode/publications`, `geonode/publications/{pk}/rasters`). In the generic hub it becomes a **new, standalone, optional** app so GeoNode can be disabled or replaced later:
+
+| Piece | What |
+|---|---|
+| `v1_geonode/urls.py` | `POST v1/geonode/publications` (create a publication from a CDI run); `POST v1/geonode/publications/{pk}/rasters` (attach raster layers) |
+| `v1_geonode/views.py` + `serializers.py` | extracted from the eswatini `v1_publication` push views; set the `Publication` fields the CDI pipeline sends (geonode id, year-month, category, download URL) |
+| migration | only if new `Publication`/link fields are needed; otherwise reuse existing `v1_publication` models |
+| module flag | gated by `DIH_MODULES` (default on; see MC-1 §6). Disabled → endpoints 404 and the CDI sync step is a no-op |
+
+The ported `sync_geonode_publications_job.py` (CDI side) POSTs to this app; it already skips silently when `DROUGHTMAP_HUB_URL` is unset.
 
 ---
 
@@ -175,15 +189,15 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 ### D-3: Keep the old GeoNode categories alongside the new ones
 **Rationale**: existing instances have published `lst-raster-map`/`ndvi-raster-map` layers that the public "browse" and "compare" pages may still link to.
 
-### D-4: Port the eswatini `v1_geonode` publication API; the sync job POSTs to it
-**Decision** (2026-10-12, OQ-2): port the eswatini hub's `v1_geonode` app (the `/api/v1/geonode/publications` endpoint) into the generic app, and enable the ported `sync_geonode_publications_job.py` to POST to it.
+### D-4: Create a new, optional `v1_geonode` app from the eswatini `v1_publication` push endpoints
+**Decision** (2026-10-12, OQ-2): the geonode publication-push endpoint has no app of its own in the eswatini hub — it lives in `v1_publication`. In the generic hub, extract it into a **new, standalone, optional** app `api/v1/v1_geonode` (see §3). The ported `sync_geonode_publications_job.py` POSTs to it.
 
 **Rationale**:
-- The eswatini `sync_geonode_publications_job.py` POSTs to `/api/v1/geonode/publications`, which the generic app did not have.
-- Porting `v1_geonode` is the first step of the backend-first API porting (OQ-3), and reuses the eswatini publication flow instead of maintaining a second one.
-- The sync job still skips silently when `DROUGHTMAP_HUB_URL` is unset, so Eswatini and other deployments are unaffected until the endpoint is wired.
+- The eswatini `sync_geonode_publications_job.py` POSTs to `/api/v1/geonode/publications`, which the generic app does not have.
+- A dedicated app keeps GeoNode concerns isolated and **optional** (`DIH_MODULES`), so a future deployment can disable or replace GeoNode without touching `v1_publication`. This fits MC-1's pluggable-module model.
+- The sync job skips silently when `DROUGHTMAP_HUB_URL` is unset, so Eswatini and other deployments are unaffected until the endpoint is wired.
 
-**Impact**: `v1_geonode` (model/serializer/view/urls + migration) is added to the generic app, and the ported sync job moves from "off" to active once the endpoint and `DROUGHTMAP_HUB_URL` are configured.
+**Impact**: a new `v1_geonode` app (urls/views/serializers, migration only if new fields are needed) is added and gated by `DIH_MODULES`. The ported sync job moves from "off" to active once the endpoint and `DROUGHTMAP_HUB_URL` are configured.
 
 ---
 
@@ -235,7 +249,7 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 ## 10. Open Questions
 
 - [x] **OQ-1 (D-2)**: Is any live instance relying on the old LST/NDVI pipeline outside Southern Africa? Kenya is configured locally. If one is live, it loses its CDI until CDP-6 ships. **— RESOLVED 2026-10-12: no live instance (Kenya is local/dev only), so the legacy pipeline is dropped and tagged.**
-- [x] **OQ-2 (D-4)**: Port the eswatini hub's `/api/v1/geonode/publications` endpoint into the generic app, or keep the generic app's own publication-creation flow? **— RESOLVED 2026-10-12: port the eswatini `v1_geonode` publication API into the generic app and enable the ported sync job to POST to it (see D-4).**
+- [x] **OQ-2 (D-4)**: Port the eswatini hub's `/api/v1/geonode/publications` endpoint into the generic app, or keep the generic app's own publication-creation flow? **— RESOLVED 2026-10-12: extract the eswatini `v1_publication` geonode push endpoints into a new, standalone, optional `v1_geonode` app in the generic hub, and enable the ported sync job to POST to it (see D-4 / §3).**
 - [x] **OQ-3**: Should the eswatini hub's v2 app features (review/validation redesign, Insights, modules) also move into the generic hub? That is the scope of MC-1, and it is far larger than this port. It needs a decision before MC-1 starts. **— RESOLVED 2026-10-12: no wholesale move. Port the backend APIs first (starting with `v1_geonode`), then port the frontend iteratively to strip Eswatini hardcoding. MC-1 proceeds backend-first and incrementally.**
 - [x] **OQ-4**: After the port, does `eswatini-droughtmap-hub-cdi` keep running for Eswatini production, or does Eswatini move to the generic hub's `cdi/`? Until decided, fixes must land in both. **— RESOLVED 2026-10-12: keep both — `eswatini-droughtmap-hub-cdi` stays Eswatini-only, this `cdi/` is the generic/global pipeline. They may diverge; no byte-sync promise.**
 
@@ -244,7 +258,7 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 ## 11. References
 
 - Pipeline plans built on this port: [README](README.md), CDP-1 … CDP-6
-- Parent designs: [MC-2](../cdi-inhouse-percentiles.md), [MC-1](../multi-country-deployment.md)
+- Parent designs: [MC-2](cdi-inhouse-percentiles.md), [MC-1](../2-v2-porting/multi-country-deployment.md)
 - NDMC retirement of LST/NDVI: `cdi/docs/lst-ndvi-retirement-mail.md` (after the port)
 - Generic hub wiring: `drought-map-hub/run.sh`, `configure.sh`, `post-installation.sh`, `app/rundeck/templates/job_template.json`, `app/backend/api/v1/v1_setup/views.py:294-425`
 

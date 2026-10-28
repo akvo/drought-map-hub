@@ -2,12 +2,11 @@
 
 ## Feature: Eswatini validation — in-house vs NDMC comparison report, then NDMC method review
 
-**Task ID**: CDP-5 (sub-task of [MC-2](../cdi-inhouse-percentiles.md))
+**Task ID**: CDP-5 (sub-task of [MC-2](cdi-inhouse-percentiles.md))
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-12
 **Status**: Draft
 **Repo affected**: `drought-map-hub` → `cdi/` (after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port; file/line refs to existing code point at the `eswatini-droughtmap-hub-cdi` source until then) (report tool). The NDMC review is a process step, not code.
-**Blocked by NDMC?** No. The comparison uses NDMC's already-published Eswatini files. NDMC's review comes *after* this report (MC-2 D-1).
 
 ---
 
@@ -56,6 +55,9 @@ Goal:
 - [ ] **ESI variants**: run ERA5-Land and ERA5 `pev` if both are fetched (CDP-1 OQ-1).
 - [ ] NDMC files are read **directly** from `Regional_Percentiles` downloads, never from GeoNode. They are different vintages (hub memory note). The report records each NDMC file's HTTP `Last-Modified`.
 - [ ] The tool is deterministic; re-running gives the same numbers.
+- [ ] **Reproducible reference:** a one-time `fetch_ndmc_reference.py` downloads the Eswatini `Regional_Percentiles` files into `input_data/ndmc_reference/` and writes `manifest.json` (per file: URL, SHA256, HTTP `Last-Modified`). The comparison runs against that pinned snapshot, so a re-run — or another person — compares against the identical reference, not a later NDMC re-publish.
+- [ ] **Runnable by others:** the whole validation runs from one entrypoint in Docker (`compare.sh` → fetch the reference if absent → compute in-house if absent → emit the report), documented in `cdi/docs/validation.md`. It needs only Earthdata/CDS credentials and Docker — no access to our running hub.
+- [ ] **Machine-readable verdict:** the tool exits non-zero on FAIL and writes `summary.json` (per-level pass booleans + headline Pearson r and same-class %), so CI or a reviewer can gate on it without reading prose.
 
 ---
 
@@ -64,8 +66,13 @@ Goal:
 There are no database changes. The output is:
 
 ```
+input_data/ndmc_reference/
+  manifest.json                # per file: URL, SHA256, Last-Modified (the pinned reference)
+  *.tif                        # the downloaded NDMC Eswatini percentiles
+
 output_data/validation/{region}_{run_date}/
   report.md                    # summary, PASS/FAIL, tables
+  summary.json                 # machine-readable: per-level pass booleans + headline r / same-class %
   metrics.csv                  # param, method, month, r, bias, rmse, same_class, within_one
   inkhundla_agreement.csv      # month, administration_id, ndmc_class, inhouse_class
   maps/{param}_{YYYYMM}.png    # NDMC | in-house | difference, for the 6 worst months
@@ -85,8 +92,17 @@ output_data/validation/{region}_{run_date}/
 ### 4.1 CLI
 
 ```bash
+# one-time: pin a checksummed NDMC reference snapshot (re-runs & third parties reuse it)
+python cdi/src/cdi-scripts/fetch_ndmc_reference.py --region Eswatini --from 2012-01 --to latest \
+       --out input_data/ndmc_reference/
+
+# compare in-house vs the pinned reference; non-zero exit on FAIL, writes summary.json
 python cdi/src/cdi-scripts/compare_ndmc.py --region Eswatini --from 2012-01 --to latest \
-       --methods gaussian,empirical [--admin-topojson path/to/eswatini.topojson]
+       --methods gaussian,empirical --reference input_data/ndmc_reference/ \
+       [--admin-topojson path/to/admin.topojson]
+
+# or, fully self-contained for a reviewer with only Docker + creds:
+./cdi/src/cdi-scripts/compare.sh --region Eswatini
 ```
 
 ### 4.2 Pass criteria (proposed; to confirm in OQ-1)
@@ -100,8 +116,8 @@ python cdi/src/cdi-scripts/compare_ndmc.py --region Eswatini --from 2012-01 --to
 ### 4.3 NDMC review step (process)
 
 1. Attach `report.md` (exported as PDF) and `metrics.csv` to a reply on the methodology thread.
-2. State our method in one paragraph per index, and point to the remaining questions (Q1–Q6).
-3. Supporting evidence: [ndmc-method-questions-references.md](../ndmc-method-questions-references.md).
+2. State our method in one paragraph per index, and point to the remaining method questions.
+3. Supporting evidence: the internal method-references note (kept internally, not in this repo).
 4. Record NDMC's feedback as decisions in MC-2 and the CDP docs. Re-run the report if the method changes.
 
 ---
@@ -173,8 +189,8 @@ These are the same cut-offs as the hub's `get_category()` (`backend/api/v1/v1_pu
 
 ## 11. References
 
-- Parent design: [MC-2](../cdi-inhouse-percentiles.md) §9, D-1
-- NDMC email reference pack: [ndmc-method-questions-references.md](../ndmc-method-questions-references.md)
+- Parent design: [MC-2](cdi-inhouse-percentiles.md) §9, D-1
+- NDMC email reference pack: kept internally (not in this repo).
 - NDMC data: https://droughtcenter.unl.edu/Outgoing/Regional_Percentiles/Southern_Africa/
 - Hub extraction: `backend/api/v1/v1_jobs/job.py` (`generate_initial_cdi_values`); boundaries: `backend/source/eswatini.topojson`
 

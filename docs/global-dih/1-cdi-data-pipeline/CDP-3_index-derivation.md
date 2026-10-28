@@ -2,12 +2,11 @@
 
 ## Feature: Index derivation — SPI, soil moisture, EVI2, ESI from raw fields
 
-**Task ID**: CDP-3 (sub-task of [MC-2](../cdi-inhouse-percentiles.md))
+**Task ID**: CDP-3 (sub-task of [MC-2](cdi-inhouse-percentiles.md))
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-12
 **Status**: Draft
 **Repo affected**: `drought-map-hub` → `cdi/` (after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port; file/line refs to existing code point at the `eswatini-droughtmap-hub-cdi` source until then)
-**Blocked by NDMC?** **ESI: yes.** The formula and variables wait for NDMC Q1. SPI, SM and EVI2 can start now, with their NDMC questions (Q3–Q5) treated as configuration choices, not code rewrites.
 
 ---
 
@@ -52,7 +51,7 @@ Goal:
   - Area-mean is done in CDP-2.
   - **Sensor splice**: VNP13A3 up to and including 2026-10, VJ113A3 after.
   - Over the 2018-01 → 2026-10 overlap, compute a per-pixel, per-calendar-month mean offset (VJ1 − VNP). Apply it only if it is significant (OQ-2). Store it in `working_data/evi2_sensor_offset.nc`.
-- [ ] **ESI** (provisional until NDMC Q1):
+- [ ] **ESI** (provisional until NDMC confirms the formula):
   - ratio = actual ET / potential ET from ERA5(-Land) monthly means.
   - Sign convention: ECMWF uses negative = evaporation, so flip the sign.
   - Units: monthly means are per-day values in m; ×1000 gives mm/day.
@@ -100,7 +99,7 @@ working_data/evi2_sensor_offset.nc                         # 12 × lat × lon, V
 def derive_spi(precip_monthly: np.ndarray, baseline_mask: np.ndarray, accumulation: int = 3) -> np.ndarray: ...
 def derive_sm(layers: list[np.ndarray], weights: list[float]) -> np.ndarray: ...
 def derive_evi2(evi2_raw: np.ndarray, qc: np.ndarray) -> np.ndarray: ...
-def derive_esi(et: np.ndarray, pet: np.ndarray) -> np.ndarray: ...   # provisional (NDMC Q1)
+def derive_esi(et: np.ndarray, pet: np.ndarray) -> np.ndarray: ...   # provisional (pending NDMC)
 ```
 
 ```bash
@@ -120,7 +119,7 @@ python cdi/src/cdi-scripts/derive_indices.py --param {spi|sm|evi2|esi|all} --fro
 
 ### D-2: SPI stays a z-score here; the percentile happens in CDP-4
 **Rationale**:
-- The old toolkit ranked SPI empirically. NDMC's current method is unknown (Q2).
+- The old toolkit ranked SPI empirically. NDMC's current method is unknown (confirmed later in CDP-4).
 - Keeping derivation (z) separate from the percentile step lets CDP-4 switch between Gaussian and empirical without touching SPI.
 
 ### D-3: The EVI2 sensor offset is measured, not assumed
@@ -178,17 +177,17 @@ python cdi/src/cdi-scripts/derive_indices.py --param {spi|sm|evi2|esi|all} --fro
 
 ## 10. Open Questions
 
-- [ ] **OQ-1 (NDMC Q1)**: The ESI formula and variables. Is the z-score capped at ±3? **— PENDING NDMC (Q1); working default: ESI = ET/PET ratio, z-score per calendar month, clipped at ±3σ, then Φ.**
+- [ ] **OQ-1**: The ESI formula and variables. Is the z-score capped at ±3? **— PENDING: NDMC to confirm the ESI formula/variables; working default: ESI = ET/PET ratio, z-score per calendar month, clipped at ±3σ, then Φ.**
 - [x] **OQ-2**: What counts as a "significant" EVI2 sensor offset? Proposed: apply it where the mean offset is greater than 0.5 × the standard deviation of month-to-month EVI2 change. **— RESOLVED 2026-10-12: adopt the proposed rule.**
-- [ ] **OQ-3 (NDMC Q3)**: NDMC's "modelled backups" for EVI2. Should our pre-2012 history be modelled too, or is 14 years acceptable? D-2 in MC-2 says 14 years is acceptable for now. **— PENDING NDMC (Q3); working default: 14-year EVI2 baseline, no pre-2012 modelled backfill.**
-- [ ] **OQ-4 (NDMC Q5)**: CHIRPS v3 and the SPI calibration period. **— PENDING NDMC (Q5); working default: CHIRPS-2.0 with its existing calibration.**
+- [ ] **OQ-3**: NDMC's "modelled backups" for EVI2. Should our pre-2012 history be modelled too, or is 14 years acceptable? D-2 in MC-2 says 14 years is acceptable for now. **— PENDING: NDMC to confirm the EVI2 long history; working default: 14-year EVI2 baseline, no pre-2012 modelled backfill.**
+- [ ] **OQ-4**: CHIRPS v3 and the SPI calibration period. **— PENDING: NDMC to confirm the CHIRPS version/SPI calibration; working default: CHIRPS-2.0 with its existing calibration.**
 
 ---
 
 ## 11. References
 
-- Parent design: [MC-2](../cdi-inhouse-percentiles.md) D-4, D-6, §4.1
-- Method references: [ndmc-method-questions-references.md](../ndmc-method-questions-references.md) (Q1, Q3, Q4, Q5)
+- Parent design: [MC-2](cdi-inhouse-percentiles.md) D-4, D-6, §4.1
+- Method references: kept in an internal method-references note (not in this repo).
 - Code: `cdi-scripts/libs/spi_calculations.py`, `STEP_0104_create_5km_soil_moisture_netcdf.py:110-122`
 - WMO (2012), *SPI User Guide*, WMO-No. 1090; Guttman (1999), https://doi.org/10.1111/j.1752-1688.1999.tb03592.x; Jiang et al. (2008), https://doi.org/10.1016/j.rse.2008.06.006
 

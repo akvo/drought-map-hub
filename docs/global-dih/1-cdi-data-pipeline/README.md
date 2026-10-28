@@ -4,8 +4,8 @@
 > Today we download ready-made percentiles from NDMC, and NDMC only publishes Southern Africa.
 > This workstream computes the four CDI inputs ourselves from raw data, so any country can get a CDI.
 
-**Parent design**: [MC-2 — In-house CDI input percentiles](../cdi-inhouse-percentiles.md)
-**Hub-side counterpart**: [MC-1 — Multi-country deployment](../multi-country-deployment.md)
+**Parent design**: [MC-2 — In-house CDI input percentiles](cdi-inhouse-percentiles.md)
+**Hub-side counterpart**: [MC-1 — Multi-country deployment](../2-v2-porting/multi-country-deployment.md) · sibling workstream index [2 — Port V2 improvements](../2-v2-porting/README.md)
 **Executed in**: **`akvo/drought-map-hub`** (the generic, multi-country DIH), folder `cdi/`. It is not executed in the Eswatini repos.
 **Source of the current pipeline code**: `akvo/eswatini-droughtmap-hub-cdi` `main @ e3651e9`, ported first by [CDP-0](CDP-0_port-eswatini-pipeline.md).
 **Status**: Planning. We are waiting for NDMC's answers on method (methodology email + follow-up).
@@ -25,40 +25,45 @@
 
 ## Sub-tasks
 
-| ID | Plan | What it delivers | Blocked by NDMC? | Size |
-|---|---|---|---|---|
-| **CDP-0** | [Port the Eswatini pipeline into the generic hub](CDP-0_port-eswatini-pipeline.md) | `drought-map-hub/cdi` runs the current NDMC pipeline inside the generic Docker/Rundeck/wizard wiring; LST/NDVI is renamed to ESI/EVI2 across app, Rundeck and GeoNode | No | M |
-| CDP-1 | [Raw data fetch adapters](CDP-1_raw-data-fetch.md) | CHIRPS, FLDAS, ERA5-Land and VIIRS fetched as bbox subsets, filling any missing month | Partly: ERA5 vs ERA5-Land (Q1) and CHIRPS v2 vs v3 (Q5) | M |
-| CDP-2 | [Grid, bounds & regrid](CDP-2_grid-bounds-regrid.md) | 0.05° country grid, bounds snapping, antimeridian (Fiji), regrid of every source | No | M |
-| CDP-3 | [Index derivation](CDP-3_index-derivation.md) | SPI-3, root-zone SM, EVI2 with the sensor splice, ESI (provisional) | **ESI only** (Q1) | M |
-| CDP-4 | [Baseline & percentile engine](CDP-4_baseline-percentile-engine.md) | Frozen 40/14-year baselines, Gaussian and empirical percentiles, the STEP_0100 output contract | Default method only (Q2) | S |
-| CDP-5 | [Eswatini validation + NDMC review](CDP-5_eswatini-validation.md) | In-house vs NDMC report (per cell, per Inkhundla, D-class), PASS/FAIL, review email | No | S |
-| CDP-6 | [Pipeline integration](CDP-6_pipeline-integration.md) | `percentile_source` switch, incremental runs, yearly baseline roll, onboarding runbook, dead-code removal | After the CDP-5 PASS | M |
+| ID | Plan | What it delivers | Size |
+|---|---|---|---|
+| **CDP-0** | [Port the Eswatini pipeline into the generic hub](CDP-0_port-eswatini-pipeline.md) | `drought-map-hub/cdi` runs the current NDMC pipeline inside the generic Docker/Rundeck/wizard wiring; LST/NDVI is renamed to ESI/EVI2 across app, Rundeck and GeoNode | M |
+| CDP-1 | [Raw data fetch adapters](CDP-1_raw-data-fetch.md) | CHIRPS, FLDAS, ERA5-Land and VIIRS fetched as bbox subsets, filling any missing month | M |
+| CDP-2 | [Grid, bounds & regrid](CDP-2_grid-bounds-regrid.md) | 0.05° country grid, bounds snapping, antimeridian (Fiji), regrid of every source | M |
+| CDP-3 | [Index derivation](CDP-3_index-derivation.md) | SPI-3, root-zone SM, EVI2 with the sensor splice, ESI (provisional) | M |
+| CDP-4 | [Baseline & percentile engine](CDP-4_baseline-percentile-engine.md) | Frozen 40/14-year baselines, Gaussian and empirical percentiles, the STEP_0100 output contract | S |
+| CDP-5 | [Eswatini validation + NDMC review](CDP-5_eswatini-validation.md) | In-house vs NDMC report (per cell, per Inkhundla, D-class), PASS/FAIL, review email | S |
+| CDP-6 | [Pipeline integration](CDP-6_pipeline-integration.md) | `percentile_source` switch, incremental runs, yearly baseline roll, onboarding runbook, dead-code removal | M |
 
 ---
 
 ## Order of work
 
-```
-CDP-0 port (drought-map-hub/cdi) ──► everything below
-CDP-2 grid ──┬─► CDP-1 fetch ──► CDP-3 derive ──► CDP-4 percentiles ──► CDP-5 validate ──► NDMC review ──► CDP-6 integrate
-             └─────────────────────────────────────────────────────────────▲
-                                    (CDP-1 needs split_bounds for antimeridian countries)
+```mermaid
+flowchart LR
+    CDP0["CDP-0 port<br/>(drought-map-hub/cdi)"] --> CDP2["CDP-2 grid"]
+    CDP2 --> CDP1["CDP-1 fetch"]
+    CDP1 --> CDP3["CDP-3 derive"]
+    CDP3 --> CDP4["CDP-4 percentiles"]
+    CDP4 --> CDP5["CDP-5 self-validate"]
+    CDP5 --> CDP6["CDP-6 integrate"]
+    CDP2 -. "split_bounds (antimeridian)" .-> CDP1
+    NDMC(["NDMC method review"]) -. "refines defaults only — never gates" .-> CDP5
 ```
 
 **Before anything else:** CDP-0. The owner must first commit or stash the uncommitted local work in `drought-map-hub`: the Kenya config, `country.topojson`, `CDIMap.js`, and the others listed in CDP-0 §1.
 
-**Can start now, while we wait for NDMC (after CDP-0):**
+**In-house first — build with working defaults, do not wait for NDMC (after CDP-0):**
 - CDP-2 (grid);
 - CDP-1 (all four adapters; product choice is a config value);
-- CDP-3 for SPI, SM and EVI2;
+- CDP-3 (SPI, SM, EVI2 — and ESI with its provisional default);
 - CDP-4 (both methods);
-- the CDP-5 tool.
+- CDP-5 self-validation against NDMC's **published** Eswatini files (needs no NDMC reply).
 
-**Waits for NDMC:**
-- the ESI formula (CDP-3);
-- the default percentile method (CDP-4);
-- the final CDP-5 PASS, after NDMC's review.
+**NDMC answers only refine (never block):**
+- the ESI formula (CDP-3) — provisional default used meanwhile;
+- the default percentile method (CDP-4) — Gaussian default, both methods reported;
+- NDMC's review of the CDP-5 report sharpens confidence, but the CDP-5 **self-validation PASS** is the go/no-go for CDP-6 — not NDMC's reply.
 
 **Hard date:** VNP13A3 ends on 1 Nov 2026. CDP-1 must fetch the 2012 → Oct 2026 VNP13A3 history and the 2018 → VJ113A3 overlap.
 
@@ -68,26 +73,26 @@ CDP-2 grid ──┬─► CDP-1 fetch ──► CDP-3 derive ──► CDP-4 pe
 
 | Ref | Decision | Date |
 |---|---|---|
-| MC-2 D-1 | Ask NDMC for their method first → compute in-house → NDMC validates | 2026-09-30, revised 2026-10-06 |
+| MC-2 D-1 | In-house first: build with working defaults, self-validate against NDMC's published files, NDMC's reply only refines (never blocks) | 2026-09-30, rev 2026-10-06, in-house-first 2026-10-28 |
 | MC-2 D-2 | Baseline per component: 40 years for SPI/ESI/SM, 14 years for EVI2 (VIIRS) | 2026-09-30 |
 | MC-2 D-5 | Keep the 0.05° grid and the STEP_0100 output contract | 2026-09-30 |
 | MC-2 D-7 | Full CDI where the data supports it; SPI-only (a rainfall index) for atoll states such as the Marshall Islands | 2026-10-06 |
 
 ---
 
-## Open questions waiting on NDMC
+## Method details still being confirmed with NDMC
 
-Sent in the methodology email. The full references are in [ndmc-method-questions-references.md](../ndmc-method-questions-references.md).
+Each already has a working default, so none blocks execution (in-house-first, MC-2 D-1). NDMC's answers only refine them.
 
-| NDMC Q | Topic | Affects |
+| Method detail | Working default meanwhile | Affects |
 |---|---|---|
-| Q1 | ESI formula; ERA5 vs ERA5-Land variables; the ±3σ cap | CDP-1, CDP-3 |
-| Q2 | Gaussian vs empirical percentiles; the 40-year window | CDP-4, CDP-5 |
-| Q3 | EVI2 sensor and long history ("modelled backups"); NOAA-20/21 | CDP-1, CDP-3 |
-| Q4 | Soil moisture: FLDAS 0–100 cm weights | CDP-3 |
-| Q5 | SPI: CHIRPS v3, calibration period | CDP-1, CDP-3 |
-| Q6 | Example download and processing code | CDP-1 |
-| Q7 | Suitability for small island states (Fiji, Marshall Islands) | MC-2 D-7, CDP-6 |
+| ESI formula; ERA5 vs ERA5-Land; the ±3σ cap | ET/PET from ERA5-Land, clipped ±3σ | CDP-1, CDP-3 |
+| Percentile method (Gaussian vs empirical) and the rolling 40-year window | Gaussian, refreshed yearly | CDP-4, CDP-5 |
+| EVI2 long history / sensor transition (NOAA-20/21) | 14-year VIIRS baseline | CDP-1, CDP-3 |
+| Soil-moisture layer weights (FLDAS 0–100 cm) | 0.1/0.3/0.6 root zone | CDP-3 |
+| CHIRPS version (v2 vs v3) and SPI calibration | CHIRPS-2.0 | CDP-1, CDP-3 |
+| Example download/processing code from NDMC | not needed | CDP-1 |
+| Small-island suitability | answered 2026-10-28 (station-based) | MC-2 D-7, CDP-6 |
 
 ---
 

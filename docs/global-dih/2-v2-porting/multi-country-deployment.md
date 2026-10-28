@@ -6,7 +6,7 @@
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-09-30
 **Status**: Draft
-**Depends on**: [`cdi-inhouse-percentiles.md`](cdi-inhouse-percentiles.md) (MC-2). Without it, no country outside NDMC's `Southern_Africa` extent has a CDI to publish.
+**Depends on**: [`cdi-inhouse-percentiles.md`](../1-cdi-data-pipeline/cdi-inhouse-percentiles.md) (MC-2). Without it, no country outside NDMC's `Southern_Africa` extent has a CDI to publish.
 **Scope note**: this doc is cross-cutting. It touches all three tracks but adds no new track. It is kept at the `docs/` root for that reason.
 
 ---
@@ -157,7 +157,7 @@ The label, unit, source and description of a dataset live in `country.json` (§4
 `generate_config.py` already writes `source/config/config.min.js`, served at `/api/v1/config.js` and read by `DynamicScript.js` into app context. Three variables are added next to `topojson` and `zones`:
 
 ```js
-var modules=["weather","iks","risk_level","indicators","datasets"];
+var modules=["geonode","weather","iks","risk_level","indicators","datasets"];
 var country={"name":"Eswatini","admin_label":{"one":"Inkhundla","many":"Tinkhundla"}};
 var datasets=[{"key":"ndvi_anomaly","label":"NDVI anomaly","unit":"%","source":"…"}];
 ```
@@ -279,6 +279,7 @@ There is no upload endpoint.
 | Module flag | Django app(s) gated | Frontend surface gated | Scheduled jobs gated |
 |---|---|---|---|
 | *(core, always on)* | `v1_init`, `v1_jobs`, `v1_users`, `v1_publication`, `v1_activity`, `v1_rundeck`, `v1_insights` | review, validation, CDI insights, national overview, SOP library | — |
+| `geonode` | `v1_geonode` (new, CDP-0 D-4) | — (backend only: the CDI publication-push endpoints) | — (off → endpoints 404 and the CDI→hub sync push is a no-op) |
 | `weather` | `v1_weather` | Weather tab, confidence map mode, bulk-accept, citizen-science, brief weather block | WIS2 fetch, CHIRPS observations, AgERA5, CS reminders |
 | `iks` | `v1_iks` | IKS tab, the `soil-trend` header call, brief IKS block | Kobo download |
 | `indicators` | `v1_indicators` | exposure overview layers, dataset uploads | dataset upload jobs |
@@ -326,7 +327,7 @@ There is no upload endpoint.
 
 ## 10. Open Questions
 
-> **MC-1 execution approach (decided 2026-10-12, CDP-0 OQ-3):** no wholesale app move. Port the backend APIs first (starting with `v1_geonode` in CDP-0), then port the frontend iteratively to strip Eswatini hardcoding. One instance per country (D-1); `eswatini-droughtmap-hub` and this generic hub run in parallel.
+> **MC-1 execution approach (decided 2026-10-12, CDP-0 OQ-3):** no wholesale app move. Port the backend APIs first (starting with the new optional `v1_geonode` app in CDP-0), then port the frontend iteratively to strip Eswatini hardcoding. One instance per country (D-1); `eswatini-droughtmap-hub` and this generic hub run in parallel.
 
 - [x] **OQ-1**: Should `v1_activity` (SOP library and triggers) be optional too? Today it is core, but its triggers read `v1_indicators`. Proposed answer: keep it core, and when indicators are off, skip only the indicator-based triggers. **— RESOLVED 2026-10-12 (direction): keep `v1_activity` core; when indicators are off, skip only the indicator-based triggers. Build during the incremental MC-1 porting.**
 - [ ] **OQ-2**: Brief PDF: when every optional module is off, is a CDI-only brief still useful, or should the brief itself become optional? **— DEFERRED to MC-1 execution; recommendation: keep a CDI-only brief (do not make the brief itself optional).**
@@ -353,7 +354,7 @@ Ordered cheapest and most useful first. Tasks 1–3 are the "future-proofing now
 
 ## 12. References
 
-- Pipeline prerequisite: [`cdi-inhouse-percentiles.md`](cdi-inhouse-percentiles.md) (MC-2)
+- Pipeline prerequisite: [`cdi-inhouse-percentiles.md`](../1-cdi-data-pipeline/cdi-inhouse-percentiles.md) (MC-2)
 - Confidence design: [`track-3/weather-satellite-temperature-confidence.md`](https://github.com/akvo/eswatini-droughtmap-hub/blob/main/eswatini-v2/docs/track-3/weather-satellite-temperature-confidence.md) (WX-11), [`specs/WX-2_review_confidence_deltas.md`](https://github.com/akvo/eswatini-droughtmap-hub/blob/main/eswatini-v2/docs/specs/WX-2_review_confidence_deltas.md)
 - Review queue: [`track-2/drought-review-queue.md`](https://github.com/akvo/eswatini-droughtmap-hub/blob/main/eswatini-v2/docs/track-2/drought-review-queue.md)
 - Boundary provenance: [`track-3/inkhundla-boundary-provenance.md`](https://github.com/akvo/eswatini-droughtmap-hub/blob/main/eswatini-v2/docs/track-3/inkhundla-boundary-provenance.md)

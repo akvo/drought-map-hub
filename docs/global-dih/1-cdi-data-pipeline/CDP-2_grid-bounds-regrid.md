@@ -2,12 +2,11 @@
 
 ## Feature: Country grid, bounds snapping, antimeridian support, and regridding to 0.05°
 
-**Task ID**: CDP-2 (sub-task of [MC-2](../cdi-inhouse-percentiles.md))
+**Task ID**: CDP-2 (sub-task of [MC-2](cdi-inhouse-percentiles.md))
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-12
 **Status**: Draft
 **Repo affected**: `drought-map-hub` → `cdi/` (after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port; file/line refs to existing code point at the `eswatini-droughtmap-hub-cdi` source until then)
-**Blocked by NDMC?** No.
 
 ---
 
@@ -177,7 +176,7 @@ python cdi/src/cdi-scripts/snap_bounds.py path/to/country.geojson
 
 ## 11. References
 
-- Parent design: [MC-2](../cdi-inhouse-percentiles.md) D-5, D-7, §1.2b
+- Parent design: [MC-2](cdi-inhouse-percentiles.md) D-5, D-7, §1.2b
 - Code: `cdi-scripts/libs/config_reader.py` (grid builder), `STEP_0100_ingest_ndmc_geotiffs.py:95-118` (window read), `libs/netcdf_functions.py` (`initialize_dataset`), `STEP_0303` (`res=0.05`)
 - Prior art: `akvo/drought-map-hub` `app/backend/api/v1/v1_setup/views.py:294-329` (bbox snapping)
 

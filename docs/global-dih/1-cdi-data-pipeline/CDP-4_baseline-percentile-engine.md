@@ -2,12 +2,11 @@
 
 ## Feature: Baseline store & percentile engine — per-component 40/14-year windows, Gaussian + empirical
 
-**Task ID**: CDP-4 (sub-task of [MC-2](../cdi-inhouse-percentiles.md))
+**Task ID**: CDP-4 (sub-task of [MC-2](cdi-inhouse-percentiles.md))
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-12
 **Status**: Draft
 **Repo affected**: `drought-map-hub` → `cdi/` (after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port; file/line refs to existing code point at the `eswatini-droughtmap-hub-cdi` source until then)
-**Blocked by NDMC?** The engine is not blocked: both methods are built. Which method becomes the **default** waits for NDMC Q2.
 
 ---
 
@@ -165,16 +164,16 @@ python cdi/src/cdi-scripts/STEP_0110_compute_inhouse_percentiles.py --rebuild-ba
 
 ## 10. Open Questions
 
-- [ ] **OQ-1 (NDMC Q2)**: Gaussian or empirical, and is the method the same for every index? SM and SPI reach exactly 0 and 100 in NDMC's files, which a pure Φ never produces. **— PENDING NDMC (Q2); working default: Gaussian percentiles (D-6), with the empirical mid-rank reported alongside.**
-- [ ] **OQ-2 (NDMC Q2)**: What does "rolling" mean in NDMC's 40-year window: refreshed yearly, or every month? **— PENDING NDMC (Q2); working default: "rolling" = one baseline vintage refreshed yearly (D-3).**
+- [ ] **OQ-1**: Gaussian or empirical, and is the method the same for every index? SM and SPI reach exactly 0 and 100 in NDMC's files, which a pure Φ never produces. **— PENDING: NDMC to confirm the percentile method; working default: Gaussian percentiles (D-6), with the empirical mid-rank reported alongside.**
+- [ ] **OQ-2**: What does "rolling" mean in NDMC's 40-year window: refreshed yearly, or every month? **— PENDING: NDMC to confirm the rolling-window meaning; working default: one baseline vintage refreshed yearly (D-3).**
 - [ ] **OQ-3**: Does STEP_0302's pooled re-rank of the CDI still make sense when the inputs are true percentiles? That step is our own, not NDMC's. Decide after CDP-5. **— DEFERRED to after CDP-5: keep the pooled re-rank for now; revisit once validation shows whether true-percentile inputs change the D-class agreement.**
 
 ---
 
 ## 11. References
 
-- Parent design: [MC-2](../cdi-inhouse-percentiles.md) D-2, D-3, D-6, §1.3
-- References for Q2: [ndmc-method-questions-references.md](../ndmc-method-questions-references.md) (section Q2)
+- Parent design: [MC-2](cdi-inhouse-percentiles.md) D-2, D-3, D-6, §1.3
+- Method references: kept in an internal method-references note (not in this repo).
 - Code: `cdi-scripts/libs/statistics_operations.py:85-118`, `STEP_0302_rank_cdi_pooled.py`, `__tests__/test_cdi_pipeline.py`
 
 ---
