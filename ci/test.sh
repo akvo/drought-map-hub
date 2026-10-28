@@ -61,7 +61,7 @@ fi
 if [[ ${BACKEND_CHANGES} == 1 ]]; then
     echo "================== * BACKEND TEST * =================="
     backend_test
-    update_dbdocs
+    # update_dbdocs
 else
     echo "No Changes detected for backend -- SKIP TEST"
 fi
