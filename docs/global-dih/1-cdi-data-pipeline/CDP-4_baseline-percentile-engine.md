@@ -124,6 +124,15 @@ python cdi/src/cdi-scripts/STEP_0110_compute_inhouse_percentiles.py --rebuild-ba
 
 ---
 
+## Implementation steps
+
+1. Add the `percentile_source` / `baseline` / `percentile` config. → verify: parses; default method `gaussian`.
+2. `libs/percentiles.py`: `build_baseline()`, `percentile_gaussian()` (clip ±3σ), `percentile_empirical()`. → verify: unit test both methods on synthetic data.
+3. `build_baseline()` writes a frozen vintage `working_data/baseline/{param}_v{end_year}.nc`. → verify: dims `(month=12, lat, lon, year)` with `sample/mu/sigma/n_valid`.
+4. `STEP_0110_compute_inhouse_percentiles.py` writes `output_data/STEP_0100_{PARAM}_pct_rank_{region}.nc` (same contract as NDMC mode) + `--rebuild-baseline`. → verify: `STEP_0301` consumes the output unchanged (contract identical to NDMC mode).
+
+---
+
 ## 6. Type/Constant Mappings
 
 | Param | Baseline window (end 2025) | Method input |

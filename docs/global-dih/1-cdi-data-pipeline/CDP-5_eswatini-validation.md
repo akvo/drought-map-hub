@@ -139,6 +139,15 @@ python cdi/src/cdi-scripts/compare_ndmc.py --region Eswatini --from 2012-01 --to
 
 ---
 
+## Implementation steps
+
+1. `fetch_ndmc_reference.py` pins a checksummed NDMC snapshot (`manifest.json`: URL + SHA256 + Last-Modified). → verify: a re-run reuses the pinned files (checksums match), so third parties reproduce the same reference.
+2. `compare_ndmc.py` computes per-cell `r`/bias/rmse + Inkhundla same-class agreement; writes `report.md`, `summary.json`, `metrics.csv`, `inkhundla_agreement.csv`, and diff maps for the 6 worst months. → verify: non-zero exit on FAIL; `summary.json` carries per-level pass booleans.
+3. `compare.sh` runs the whole thing self-contained (Docker + creds) for a reviewer. → verify: end-to-end from a clean checkout.
+4. NDMC review step (process): attach `report.md` (PDF) + `metrics.csv` to the methodology thread; record feedback as decisions in MC-2/CDP. → verify: n/a (process) — re-run the report if the method changes.
+
+---
+
 ## 6. Type/Constant Mappings
 
 These are the same cut-offs as the hub's `get_category()` (`backend/api/v1/v1_publication/utils.py:112`). The value is rounded to 3 decimals first, and a negative value means No Data. Codes are `DroughtCategory`.

@@ -5,7 +5,7 @@
 > This workstream computes the four CDI inputs ourselves from raw data, so any country can get a CDI.
 
 **Parent design**: [MC-2 — In-house CDI input percentiles](cdi-inhouse-percentiles.md)
-**Hub-side counterpart**: [MC-1 — Multi-country deployment](../2-v2-porting/multi-country-deployment.md) · sibling workstream index [2 — Port V2 improvements](../2-v2-porting/README.md)
+**Hub-side counterpart**: [MC-1 — Multi-country deployment](../2-v2-porting/README.md) · sibling workstream index [2 — Port V2 improvements](../2-v2-porting/README.md)
 **Executed in**: **`akvo/drought-map-hub`** (the generic, multi-country DIH), folder `cdi/`. It is not executed in the Eswatini repos.
 **Source of the current pipeline code**: `akvo/eswatini-droughtmap-hub-cdi` `main @ e3651e9`, ported first by [CDP-0](CDP-0_port-eswatini-pipeline.md).
 **Status**: Planning. We are waiting for NDMC's answers on method (methodology email + follow-up).
@@ -23,17 +23,19 @@
 
 ---
 
-## Sub-tasks
+## Sub-tasks (5 epics)
 
-| ID | Plan | What it delivers | Size |
+The per-task docs under each epic are its phases/checklist. Unlike WS-2, **E2–E4 are mostly new in-house computation, not a port** — the Eswatini code only covers the NDMC path — so they are not slashed to "wiring".
+
+| # | Epic | Phases (detail docs) | Estimate |
 |---|---|---|---|
-| **CDP-0** | [Port the Eswatini pipeline into the generic hub](CDP-0_port-eswatini-pipeline.md) | `drought-map-hub/cdi` runs the current NDMC pipeline inside the generic Docker/Rundeck/wizard wiring; LST/NDVI is renamed to ESI/EVI2 across app, Rundeck and GeoNode | M |
-| CDP-1 | [Raw data fetch adapters](CDP-1_raw-data-fetch.md) | CHIRPS, FLDAS, ERA5-Land and VIIRS fetched as bbox subsets, filling any missing month | M |
-| CDP-2 | [Grid, bounds & regrid](CDP-2_grid-bounds-regrid.md) | 0.05° country grid, bounds snapping, antimeridian (Fiji), regrid of every source | M |
-| CDP-3 | [Index derivation](CDP-3_index-derivation.md) | SPI-3, root-zone SM, EVI2 with the sensor splice, ESI (provisional) | M |
-| CDP-4 | [Baseline & percentile engine](CDP-4_baseline-percentile-engine.md) | Frozen 40/14-year baselines, Gaussian and empirical percentiles, the STEP_0100 output contract | S |
-| CDP-5 | [Eswatini validation + NDMC review](CDP-5_eswatini-validation.md) | In-house vs NDMC report (per cell, per Inkhundla, D-class), PASS/FAIL, review email | S |
-| CDP-6 | [Pipeline integration](CDP-6_pipeline-integration.md) | `percentile_source` switch, incremental runs, yearly baseline roll, onboarding runbook, dead-code removal | M |
+| **E1** | Port the Eswatini pipeline into the generic hub | [CDP-0](CDP-0_port-eswatini-pipeline.md) (Docker/Rundeck/wizard wiring; LST/NDVI→ESI/EVI2 rename) | ~2d (a port) |
+| **E2** | Raw fetch + grid/regrid | [CDP-1](CDP-1_raw-data-fetch.md) CHIRPS/FLDAS/ERA5-Land/VIIRS adapters · [CDP-2](CDP-2_grid-bounds-regrid.md) 0.05° grid, bounds snap, antimeridian, regrid | ~2–3d |
+| **E3** | Index derivation + percentile engine | [CDP-3](CDP-3_index-derivation.md) SPI-3/SM/EVI2 splice/ESI · [CDP-4](CDP-4_baseline-percentile-engine.md) frozen baselines + Gaussian/empirical percentiles + STEP_0100 contract | ~2–3d |
+| **E4** | Eswatini self-validation + NDMC review | [CDP-5](CDP-5_eswatini-validation.md) in-house vs NDMC report (cell/Inkhundla/D-class), PASS/FAIL, review email | ~1–2d |
+| **E5** | Pipeline integration | [CDP-6](CDP-6_pipeline-integration.md) `percentile_source` switch, incremental runs, yearly baseline roll, onboarding runbook, dead-code removal | ~1–2d |
+
+**WS-1 total ≈ 2 weeks.** E2–E4 carry the real uncertainty (new science + external APIs); E1/E5 are the port/integration bookends.
 
 ---
 
@@ -41,14 +43,11 @@
 
 ```mermaid
 flowchart LR
-    CDP0["CDP-0 port<br/>(drought-map-hub/cdi)"] --> CDP2["CDP-2 grid"]
-    CDP2 --> CDP1["CDP-1 fetch"]
-    CDP1 --> CDP3["CDP-3 derive"]
-    CDP3 --> CDP4["CDP-4 percentiles"]
-    CDP4 --> CDP5["CDP-5 self-validate"]
-    CDP5 --> CDP6["CDP-6 integrate"]
-    CDP2 -. "split_bounds (antimeridian)" .-> CDP1
-    NDMC(["NDMC method review"]) -. "refines defaults only — never gates" .-> CDP5
+    E1["E1 · CDP-0 port"] --> E2["E2 · CDP-1+2 fetch+grid"]
+    E2 --> E3["E3 · CDP-3+4 derive+percentiles"]
+    E3 --> E4["E4 · CDP-5 self-validate"]
+    E4 --> E5["E5 · CDP-6 integrate"]
+    NDMC(["NDMC method review"]) -. "refines defaults only — never gates" .-> E4
 ```
 
 **Before anything else:** CDP-0. The owner must first commit or stash the uncommitted local work in `drought-map-hub`: the Kenya config, `country.topojson`, `CDIMap.js`, and the others listed in CDP-0 §1.

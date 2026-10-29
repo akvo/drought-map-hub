@@ -159,6 +159,15 @@ PROVIDERS = {
 
 ---
 
+## Implementation steps
+
+1. Add the `sources` block to `cdi_project_settings.conf`. → verify: config parses; NDMC-mode files untouched.
+2. Implement `fetch_month()` + the 4 provider functions (`chirps`/`opendap`/`cds`/`lpdaac`) in one module with a plain `PROVIDERS` dict. → verify: unit test each provider against a mocked response writes a `.nc` with bbox + 0.5° margin and the required attrs.
+3. `fetch_raw.py` CLI (`--param/--from/--to/--force/--dry-run`), writing `input_data/raw/{PARAM}/…` + `fetch_log.json`. → verify: `--dry-run` lists months; exit 1 when a month fails (listed).
+4. ERA5-Land one request per **year**; VIIRS fetches both sensors during overlap. → verify: a 2-year ESI fetch issues 2 CDS requests; a VIIRS overlap month pulls both VNP13A3 + VJ113A3.
+
+---
+
 ## 6. Type/Constant Mappings
 
 | CDI input | Provider | Product | Variables fetched | History |

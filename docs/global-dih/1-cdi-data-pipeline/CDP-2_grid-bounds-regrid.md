@@ -130,6 +130,15 @@ python cdi/src/cdi-scripts/snap_bounds.py path/to/country.geojson
 
 ---
 
+## Implementation steps
+
+1. `libs/grid.py`: `snap_bounds()`, `grid_axes()`, `split_bounds()`, `regrid()`. → verify: a regression test pins the Eswatini lat/lon arrays to today's 44×44 grid.
+2. `snap_bounds.py` CLI prints the `bounds` block for a country GeoJSON. → verify: output is a valid config block on cell centres.
+3. Antimeridian support: 0–360° internally; `split_bounds()` → 1 or 2 −180/180 boxes for providers. → verify: a Fiji-like bbox (`w_lon > e_lon`) yields 2 provider boxes and one contiguous grid.
+4. Regrid methods: area-weighted mean (VIIRS), bilinear (0.1° models), identity. → verify: a regridded field lands on the 0.05° grid with −9999 nodata.
+
+---
+
 ## 6. Type/Constant Mappings
 
 | Source | Native grid | Method onto 0.05° |

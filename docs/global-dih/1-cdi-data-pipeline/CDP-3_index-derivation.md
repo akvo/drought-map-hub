@@ -139,6 +139,15 @@ python cdi/src/cdi-scripts/derive_indices.py --param {spi|sm|evi2|esi|all} --fro
 
 ---
 
+## Implementation steps
+
+1. Add the `derivation` block to `cdi_project_settings.conf`. → verify: parses.
+2. `libs/indices.py`: pure `derive_spi/derive_sm/derive_evi2/derive_esi` (arrays in → array out). → verify: unit test each against a known small input.
+3. `derive_indices.py` CLI writes `working_data/index/{PARAM}/…` on the CDP-2 grid. → verify: index files produced for a sample month.
+4. EVI2 sensor offset measured from the overlap (`evi2_sensor_offset.nc`, VJ1 − VNP) and applied at the splice month. → verify: offset computed from overlap, applied only from `splice_month`.
+
+---
+
 ## 6. Type/Constant Mappings
 
 | Param | Raw input (CDP-1) | Derived quantity | Units out |

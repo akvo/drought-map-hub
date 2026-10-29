@@ -6,7 +6,7 @@
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-09-30
 **Status**: Draft. D-1 and D-2 are decided (2026-09-30), so the spike can start.
-**Repo affected**: `drought-map-hub/cdi` (generic hub), after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port of `eswatini-droughtmap-hub-cdi`. Not this repo. The design lives here because it is the prerequisite of [`multi-country-deployment.md`](../2-v2-porting/multi-country-deployment.md) (MC-1).
+**Repo affected**: `drought-map-hub/cdi` (generic hub), after the [CDP-0](CDP-0_port-eswatini-pipeline.md) port of `eswatini-droughtmap-hub-cdi`. Not this repo. The design lives here because it is the prerequisite of the [WS-2 plan](../2-v2-porting/README.md) (MC-1).
 **Builds on**: `eswatini-droughtmap-hub-cdi/docs/cdi-scale-fix-requirements.md`, `docs/lst-ndvi-retirement-mail.md`, and the generic hub `akvo/drought-map-hub` (`cdi/`).
 
 ---

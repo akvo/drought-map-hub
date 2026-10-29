@@ -52,7 +52,7 @@ The short list sent to the colleague, in four groups:
 | MC-2 D-1 | **In-house first:** build with working defaults, self-validate against NDMC's published files, treat NDMC's reply as a sharpener (never a blocker). `inhouse` mode must run with zero NDMC files/replies. | 09-30, rev 10-06, **in-house-first 10-28** |
 | MC-2 D-2 | Baseline per component: **40 years for SPI/ESI/SM, 14 years for EVI2** (VIIRS starts in 2012). Option 1 was chosen; MODIS stitching is deferred. | 09-30 |
 | MC-2 D-7 | Full CDI where the data supports it. **SPI-only "rainfall drought index"** for atoll states (Marshall Islands). | 10-06 (proposed) |
-| MC-1 D-1 | One instance per country, not multi-tenant. | 09-30 (proposed) |
+| MC-1 D-1 | ~~One instance per country, not multi-tenant.~~ **Reframed 2026-10-30 (WS-3):** the target is a **multi-tenant hub** (hybrid — shared GeoNode + central multi-tenant pipeline + self-service onboarding); a tenant can still run **standalone** as the backfilled `default` tenant, so existing single-tenant deployments are unaffected. See [3-multi-tenancy](3-multi-tenancy/README.md). | 09-30, **reframed 10-30** |
 | CDP-0 OQ-1 | No live non-Southern-Africa instance; drop and tag the legacy LST/NDVI pipeline. | 10-12 |
 | CDP-0 OQ-2 | Extract the eswatini `v1_publication` geonode push endpoints into a new, optional `v1_geonode` app in the generic hub; enable the ported sync job. | 10-12 |
 | CDP-0 OQ-3/4 | No wholesale app move: port backend APIs first, frontend iteratively. Keep both CDI repos. | 10-12 |
@@ -112,9 +112,9 @@ Host allow-list (CDP-1 §8): `data.chc.ucsb.edu`, `opendap.earthdata.nasa.gov`, 
 
 ---
 
-## 6. Two workstreams (this folder)
+## 6. Three workstreams (this folder)
 
-All planning groups under **two top-level plan tasks**:
+All planning groups under **three top-level plan tasks**:
 
 ### Workstream 1 — Plan tasks for the global CDI data pipeline
 Make the CDI computable **in-house** for any country (independence from NDMC).
@@ -123,10 +123,55 @@ Make the CDI computable **in-house** for any country (independence from NDMC).
 
 ### Workstream 2 — Plan tasks for porting V2 improvements to the generic repo
 Bring the Eswatini hub v2 app features into the generic hub as **optional, country-agnostic modules** (backend-first, frontend iteratively — CDP-0 OQ-3).
-- **Design:** [`multi-country-deployment.md`](2-v2-porting/multi-country-deployment.md) (MC-1) — optional modules (`DIH_MODULES`), `source/` as the country pack, weather-off → progress-only review map, the `v1_datasets` client table. Written against the Eswatini hub's code (file:line refs); re-map to `drought-map-hub/app` when executing.
-- **Sub-tasks:** [`2-v2-porting/README.md`](2-v2-porting/README.md) — **VP-0 … VP-7** (v1_geonode → module system → weather-off UX → config flags → country pack → map framing → admin label → client data).
+- **Design:** [WS-2 plan](2-v2-porting/README.md) — optional modules (`DIH_MODULES`), `source/` as the country pack, weather-off → progress-only review map, the `v1_datasets` client table. Written against the Eswatini hub's code (file:line refs); re-map to `drought-map-hub/app` when executing.
+- **Sub-tasks:** [`2-v2-porting/README.md`](2-v2-porting/README.md) — **DIH-1 … DIH-10** (v1_geonode → module system → config flags → country pack → map framing → admin label → client data → theming → setup-wizard theme+modules → v2 UI port).
 
-**CDP-0 is the hinge:** it ports the pipeline (WS-1) and bootstraps the first WS-2 backend module (`v1_geonode`).
+### Workstream 3 — Plan tasks for multi-tenancy (hybrid)
+Turn the single-tenant hub into a **multi-tenant** one (adapting Akvo MIS `MT-*`): one hub deployment serves many countries by subdomain, a shared GeoNode (category per tenant), a **central** multi-tenant CDI pipeline, and **self-service onboarding**. Standalone single-tenant deployment stays possible via the `default` tenant.
+- **Design + tasks:** [`3-multi-tenancy/README.md`](3-multi-tenancy/README.md) — foundation + **MT-1 … MT-11** (tenant model → read isolation → write enforcement → subdomain routing → email-per-tenant → onboarding → branding → geonode attribution → jobs scoping → platform workspace *(optional)* → central pipeline).
+
+**CDP-0 is the hinge:** it ports the pipeline (WS-1) and bootstraps the first WS-2 backend module (`v1_geonode`, DIH-1). **WS-3 reframes D-1** — see the decisions table and [3-multi-tenancy](3-multi-tenancy/README.md) §5 for how it changes DIH-1/2/4/9/10 and CDP-0/CDP-6.
+
+### Overall implementation order (15 epics, 5 per workstream)
+
+Each workstream is **5 epics ≈ ~2 weeks**; the detailed `CDP-*` / `DIH-*` / `MT-*` docs are the phases inside each epic. The three tracks overlap — only the cross-workstream dependencies (dotted) force ordering between them.
+
+```mermaid
+flowchart LR
+    subgraph WS1["WS-1 · CDI pipeline (~2w)"]
+        direction LR
+        C1["E1 CDP-0 port"] --> C2["E2 fetch+grid"] --> C3["E3 derive+pct"] --> C4["E4 validate"] --> C5["E5 integrate"]
+    end
+    subgraph WS2["WS-2 · v2 porting (~2w)"]
+        direction LR
+        V1["E1 module system"] --> V2["E2 geonode+storage"]
+        V1 --> V4["E4 client data"]
+        V1 --> V3["E3 country adapt"]
+        V1 --> V5["E5 theming+UI"]
+        V3 --> V5
+    end
+    subgraph WS3["WS-3 · multi-tenancy (~2w)"]
+        direction LR
+        M1["E1 tenant core"] --> M2["E2 routing+auth"] --> M3["E3 onboarding"]
+        M1 --> M4["E4 surfaces"]
+        M3 --> M5["E5 central pipeline"]
+        M4 --> M5
+    end
+    C1 -. bootstraps .-> V2
+    M1 -. Tenant model .-> V3
+    V2 -. v1_geonode push .-> M4
+    C5 -. pipeline .-> M5
+    V2 -. push endpoint .-> M5
+```
+
+**Sequenced into phases** (WS-1's science track runs in parallel throughout):
+
+1. **Foundation:** WS-1 **E1** (CDP-0 port) + WS-2 **E1** (module system). CDP-0 bootstraps DIH-1.
+2. **Tenant core:** WS-3 **E1** (`Tenant` model + isolation) — unblocks the per-tenant country pack (WS-2 E3).
+3. **Parallel build-out:** WS-2 **E2–E5** (single-tenant hub features) + WS-3 **E2–E4** (routing, onboarding, surfaces), while WS-1 **E2–E4** (fetch → derive → validate) runs on its own track.
+4. **Converge:** WS-1 **E5** (pipeline integration) → WS-3 **E5** (central multi-tenant pipeline) last, since it needs the WS-1 pipeline, the WS-2 `v1_geonode` push, and the WS-3 tenant-config API.
+
+*Deferred, outside the 15:* WS-3 **MT-10** (platform/ops console). Total ≈ **6 weeks** of focused work if run end to end, less where the three tracks overlap.
 
 ---
 

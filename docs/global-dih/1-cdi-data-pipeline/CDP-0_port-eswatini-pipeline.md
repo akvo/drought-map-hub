@@ -11,6 +11,8 @@
 
 ---
 
+> **Multi-tenancy (WS-3):** this port is the basis for the **central multi-tenant pipeline** ([MT-11](../3-multi-tenancy/MT-11_central-pipeline.md)) — one pipeline that discovers tenants from the hub and loops over them, writing to `/app/data/<subdomain>/`. The `v1_geonode` push gains per-tenant attribution ([MT-8](../3-multi-tenancy/MT-8_geonode-tenant-attribution.md)). The port itself is unchanged; MT-11 wraps it in the tenant loop. A standalone deploy runs it for the `default` tenant.
+
 ## 1. Context & Problem Statement
 
 ```
@@ -117,12 +119,13 @@ The geonode publication-push endpoint has **no app of its own** in the eswatini 
 
 | Piece | What |
 |---|---|
-| `v1_geonode/urls.py` | `POST v1/geonode/publications` (create a publication from a CDI run); `POST v1/geonode/publications/{pk}/rasters` (attach raster layers) |
-| `v1_geonode/views.py` + `serializers.py` | extracted from the eswatini `v1_publication` push views; set the `Publication` fields the CDI pipeline sends (geonode id, year-month, category, download URL) |
-| migration | only if new `Publication`/link fields are needed; otherwise reuse existing `v1_publication` models |
-| module flag | gated by `DIH_MODULES` (default on; see MC-1 §6). Disabled → endpoints 404 and the CDI sync step is a no-op |
+| `v1_geonode/urls.py` | `POST v1/geonode/publications` (steady-state metadata sync from a CDI run); `POST v1/geonode/publications/{pk}/rasters` (GeoNode-down fallback: pre-computed raster values) |
+| `v1_geonode/views.py` + `serializers.py` | extracted from the eswatini-v2 `v1_publication` push views; both POSTs authenticate with an **API key** (`HasApiKey`), not a session/user. They set the fields the CDI pipeline sends (geonode id, year-month, category, URLs, file size) |
+| `PublicationGeonode` model + migration | cache of GeoNode resource metadata (one row per resource, `geonode_id` unique) so reads survive GeoNode downtime; the read path `CDIGeonodeAPI.get` serves this cache instead of calling GeoNode live (the generic repo currently pulls live — this port moves it to cache-backed) |
+| `sync_publication_geonodes` command | backfill of the cache for history / recovery |
+| module flag | gated by `DIH_MODULES` (default on; see MC-1 §6). Disabled → endpoints **404** |
 
-The ported `sync_geonode_publications_job.py` (CDI side) POSTs to this app; it already skips silently when `DROUGHTMAP_HUB_URL` is unset.
+**How the CDI side reaches the hub (config, not status-probing):** the ported pipeline step `job_05_sync_to_portal.sh` POSTs to this app **only when** `DROUGHTMAP_HUB_URL` + `DROUGHTMAP_HUB_API_KEY` are set in `cdi/.env`; unset → it skips silently. The pipeline never probes the hub or branches on an HTTP status to decide whether the module exists — the enable/disable signal is configuration, and auth is the API key.
 
 ---
 
@@ -190,14 +193,25 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 **Rationale**: existing instances have published `lst-raster-map`/`ndvi-raster-map` layers that the public "browse" and "compare" pages may still link to.
 
 ### D-4: Create a new, optional `v1_geonode` app from the eswatini `v1_publication` push endpoints
-**Decision** (2026-10-12, OQ-2): the geonode publication-push endpoint has no app of its own in the eswatini hub — it lives in `v1_publication`. In the generic hub, extract it into a **new, standalone, optional** app `api/v1/v1_geonode` (see §3). The ported `sync_geonode_publications_job.py` POSTs to it.
+**Decision** (2026-10-12, OQ-2): the geonode publication-push endpoints have no app of their own in the eswatini hub — they live in `v1_publication`. In the generic hub, extract them into a **new, standalone, optional** app `api/v1/v1_geonode` (see §3). The ported pipeline step `job_05_sync_to_portal.sh` POSTs to it.
 
 **Rationale**:
-- The eswatini `sync_geonode_publications_job.py` POSTs to `/api/v1/geonode/publications`, which the generic app does not have.
+- The eswatini-v2 push endpoints (`POST /api/v1/geonode/publications` + `/rasters`, `HasApiKey`) and the `PublicationGeonode` cache do not exist in the generic app, which still pulls GeoNode live.
 - A dedicated app keeps GeoNode concerns isolated and **optional** (`DIH_MODULES`), so a future deployment can disable or replace GeoNode without touching `v1_publication`. This fits MC-1's pluggable-module model.
-- The sync job skips silently when `DROUGHTMAP_HUB_URL` is unset, so Eswatini and other deployments are unaffected until the endpoint is wired.
+- The pipeline push is **env-gated**: `job_05_sync_to_portal.sh` skips silently when `DROUGHTMAP_HUB_URL`/`_API_KEY` are unset, so Eswatini and other deployments are unaffected until the endpoint is wired. The decision is config-driven, not an HTTP-status fallback.
 
-**Impact**: a new `v1_geonode` app (urls/views/serializers, migration only if new fields are needed) is added and gated by `DIH_MODULES`. The ported sync job moves from "off" to active once the endpoint and `DROUGHTMAP_HUB_URL` are configured.
+**Impact**: a new `v1_geonode` app (urls/views/serializers + the `PublicationGeonode` cache model/migration + the `sync_publication_geonodes` backfill command) is added and gated by `DIH_MODULES`; the read path moves from live-pull to cache-backed. The ported sync step moves from "off" to active once the endpoint and `DROUGHTMAP_HUB_URL`/`_API_KEY` are configured.
+
+---
+
+## Implementation steps
+
+Reviewable commits, in order (mirror the §2 AC commit list):
+1. New branch `feature/port-ndmc-cdi-pipeline`; copy the `cdi/` code (scripts + `background-jobs/` plural) from the eswatini source. → verify: `job.sh --dry-run` resolves; tree matches the source layout.
+2. Port docker/compose + CI wiring for `cdi`. → verify: `ci/test.sh` green for the cdi suite.
+3. App/rundeck/geonode rename + the weight migration (`RenameField` lst→esi, ndvi→evi2; `AlterField` defaults spi 0.3, sm 0.1). → verify: `migrate` forward **and** back; existing rows keep their weights.
+4. Create the optional `v1_geonode` app and wire it into `DIH_MODULES` (full steps in [DIH-1](../2-v2-porting/DIH-1_v1-geonode-optional-app.md)). → verify: `geonode` off → push endpoint 404; on → a mocked pipeline push creates a `Publication`.
+5. Docs (README + onboarding). → verify: links resolve; the onboarding runbook (CDP-6) is referenced.
 
 ---
 
@@ -258,7 +272,7 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 ## 11. References
 
 - Pipeline plans built on this port: [README](README.md), CDP-1 … CDP-6
-- Parent designs: [MC-2](cdi-inhouse-percentiles.md), [MC-1](../2-v2-porting/multi-country-deployment.md)
+- Parent designs: [MC-2](cdi-inhouse-percentiles.md), [MC-1](../2-v2-porting/README.md)
 - NDMC retirement of LST/NDVI: `cdi/docs/lst-ndvi-retirement-mail.md` (after the port)
 - Generic hub wiring: `drought-map-hub/run.sh`, `configure.sh`, `post-installation.sh`, `app/rundeck/templates/job_template.json`, `app/backend/api/v1/v1_setup/views.py:294-425`
 

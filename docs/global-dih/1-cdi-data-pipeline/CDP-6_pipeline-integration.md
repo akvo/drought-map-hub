@@ -10,6 +10,8 @@
 
 ---
 
+> **Multi-tenancy (WS-3):** the `percentile_source` switch and the `job.sh` integration here are **reworked** by [MT-11](../3-multi-tenancy/MT-11_central-pipeline.md): instead of one country's `cdi_project_settings.conf` on disk, `job.sh` reads the active tenants + per-tenant config from a hub API and loops over them with per-tenant failure isolation + bounded parallelism, writing to `/app/data/<subdomain>/`. The onboarding runbook below becomes the **self-service** flow ([MT-6](../3-multi-tenancy/MT-6_self-service-onboarding.md)) + auto-discovery. Standalone deploy = the `default` tenant.
+
 ## 1. Context & Problem Statement
 
 ```
@@ -110,7 +112,7 @@ Onboarding runbook (`docs/onboarding-a-country.md`):
 5. `rebuild-baseline`.
 6. `job.sh all`.
 7. Check the GeoNode categories.
-8. Point `DROUGHTMAP_HUB_URL` at the country's hub.
+8. Set `DROUGHTMAP_HUB_URL` + `DROUGHTMAP_HUB_API_KEY` to the country's hub (both required for `job_05_sync_to_portal.sh` to push; unset = skip).
 
 ---
 
@@ -130,6 +132,16 @@ Onboarding runbook (`docs/onboarding-a-country.md`):
 
 ### D-3: The baseline roll-forward needs a human approval
 **Rationale**: a new vintage shifts every percentile slightly. Someone should look at the CDP-5-style comparison against the old vintage before it goes live.
+
+---
+
+## Implementation steps
+
+1. Finalise the in-house `cdi_project_settings.conf` shape with the `percentile_source` switch (default `ndmc`). → verify: default `ndmc` = zero behaviour change for Eswatini.
+2. `job.sh` reads `percentile_source` and routes NDMC vs in-house (`recent`/`all`/`rebuild-baseline`). → verify: both modes produce the `STEP_0100` outputs `STEP_0301` expects.
+3. Dead-code removal: `STEP_0104`/`STEP_0204` + unused HDF helpers (superseded by CDP-3). → verify: pipeline runs after removal; no import of a deleted module.
+4. Onboarding runbook `docs/onboarding-a-country.md` (snap bounds → weights → creds → fetch → baseline → job → GeoNode → hub URL+key). → verify: a new-country dry run follows the runbook end to end.
+5. Baseline roll-forward (`rebuild-baseline`) stays manual with human approval. → verify: it is not on the schedule; running it is an explicit step.
 
 ---
 
@@ -182,7 +194,7 @@ Onboarding runbook (`docs/onboarding-a-country.md`):
 ## 11. References
 
 - Parent design: [MC-2](cdi-inhouse-percentiles.md) §4.1, §7, §11; D-7
-- Hub side: [MC-1](../2-v2-porting/multi-country-deployment.md)
+- Hub side: [MC-1](../2-v2-porting/README.md)
 - Code (eswatini source, pre-port): `src/background-job/job.sh` (line 34), `utils.sh` (lines 308, 374), `STEP_0000_execute_all_steps.py` (lines 34-37), `upload_to_geonode_job.py`
 
 ---
