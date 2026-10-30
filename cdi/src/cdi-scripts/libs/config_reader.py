@@ -4,8 +4,7 @@ import os
 
 class ConfigParser:
     """
-    This class handles the parsing and
-    "get" calls for the configuration settings
+    This class handles the parsing and "get" calls for the configuration settings
     """
     def __init__(self):
         self.config = {}
