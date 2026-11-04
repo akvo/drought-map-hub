@@ -1,15 +1,17 @@
-version: "3.8"
 services:
   cdi:
     build:
-      context: ./src/cdi-scripts
+      context: ./src
       dockerfile: Dockerfile
     image: cdi-scripts:latest
     container_name: cdi
     volumes:
+      - ./src:/app/src
       - ./input_data:/app/input_data
       - ./output_data:/app/output_data
-      - ./config/cdi_project_settings.json:/app/cdi_project_settings.conf
+      - ./logs:/app/logs
+      - ./config/cdi_project_settings.json:/app/src/cdi-scripts/cdi_project_settings.conf
+      - ./.env:/app/.env
     working_dir: /app
     # Don't run the script immediately; let user exec into container
     command: ["sleep", "infinity"]

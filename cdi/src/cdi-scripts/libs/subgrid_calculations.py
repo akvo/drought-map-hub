@@ -269,18 +269,16 @@ class HDFSubGrid:
             None: adds values to class properties
         """
         # find the range for the latitudes of the subset #
-        # Use small tolerance to handle floating-point precision issues
-        tolerance = 0.001
         for j, y in enumerate(latitudes):
-            if abs(y - float(bounds['n_lat'])) < tolerance:
+            if round(y, 3) == float(bounds['n_lat']):
                 self.first_root_y = j
-            elif abs(y - float(bounds['s_lat'])) < tolerance:
+            elif round(y, 3) == float(bounds['s_lat']):
                 self.last_root_y = j + 1  # ensure we have coverage
         # find the range for the longitudes of the subset #
         for i, x in enumerate(longitudes):
-            if abs(x - float(bounds['w_lon'])) < tolerance:
+            if round(x, 3) == float(bounds['w_lon']):
                 self.first_root_x = i
-            elif abs(x - float(bounds['e_lon'])) < tolerance:
+            elif round(x, 3) == float(bounds['e_lon']):
                 self.last_root_x = i + 1  # ensure we have coverage
 
     def __extract_raw_subset(self, parameter):

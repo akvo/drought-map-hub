@@ -189,3 +189,8 @@ geonode_category.json
 
 # Per-instance CDI config (see cdi_project_settings.json.example)
 /config/cdi_project_settings.json
+
+# Runtime pipeline data: downloaded NDMC inputs, generated GeoTIFFs, URL logs
+/input_data/
+/output_data/
+/logs/

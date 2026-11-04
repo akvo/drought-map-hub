@@ -98,16 +98,16 @@ Host allow-list (CDP-1 §8): `data.chc.ucsb.edu`, `opendap.earthdata.nasa.gov`, 
 ## 5. NDMC thread status
 
 - **Contacts:** the NDMC methodology contacts are held privately (not in this repo). The relationship runs through the Akvo leads.
-- **Methodology email:** subject "CDI for countries beyond Southern Africa – questions on your methodology". **Both sent — methodology 2026-10-06, follow-up 2026-10-12.** NDMC replied on the Pacific/small-island question on 2026-10-28 (see MC-2 OQ-7); no reply yet on the method questions. Iwan owns and sends this correspondence directly.
-- **Open method questions (each has a working default):**
-  - ESI formula
-  - Percentile method (Gaussian vs empirical) and the 40-year window
-  - EVI2 history and the move to NOAA-20/21
-  - FLDAS soil-moisture weights
-  - CHIRPS version and SPI calibration
-  - the example code they offered
-  - suitability for small island states
-- The verified references for these questions, and the likely questions back, are kept in an internal method-references note (not in this repo).
+- **Methodology email:** subject "CDI for countries beyond Southern Africa – questions on your methodology". **Both sent — methodology 2026-10-06, follow-up 2026-10-12.** NDMC replied on the Pacific/small-island question (Q7) on 2026-10-28 (see MC-2 OQ-7); no reply yet on Q1–Q6. Iwan owns and sends this correspondence directly.
+- **Questions:**
+  - Q1: ESI formula
+  - Q2: Gaussian vs empirical percentiles, and the 40-year window
+  - Q3: EVI2 history, and the move to NOAA-20/21
+  - Q4: FLDAS soil-moisture weights
+  - Q5: CHIRPS v3 and SPI calibration
+  - Q6: the example code they offered
+  - Q7: suitability for small island states
+- The verified references for Q1–Q6, and the likely questions back, are in [`ndmc-method-questions-references.md`](ndmc-method-questions-references.md).
 - **Resolved 2026-10-12:** the "new synthetic/emulated data source" Iwan mentioned is NDMC's Southern-Africa Regional_Percentiles (https://droughtcenter.unl.edu/Outgoing/Regional_Percentiles/Southern_Africa/) — the generation-2 input already used by the Eswatini CDI (`eswatini-droughtmap-hub-cdi`). It is not a new source and does not change the Q1/Q3 wording.
 
 ---
