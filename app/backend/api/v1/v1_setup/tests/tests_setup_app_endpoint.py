@@ -353,7 +353,10 @@ class SetupAppAPITest(APITestCase):
         self.assertIn("organizations", response.data)
         # Check that the organizations field contains validation errors
         organizations_errors = response.data["organizations"]
-        self.assertIsInstance(organizations_errors, list)
+        # DRF >=3.16 returns nested list-serializer errors as a dict keyed by
+        # the invalid item's index; <=3.15 returned a list. Index [0] works
+        # for both (list index / dict key 0).
+        self.assertIsInstance(organizations_errors, (list, dict))
         self.assertTrue(len(organizations_errors) > 0)
         # Check that the first organization has a name error
         org_error = organizations_errors[0]

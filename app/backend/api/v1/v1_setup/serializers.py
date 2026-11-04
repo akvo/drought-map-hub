@@ -1,5 +1,8 @@
 import os
 import ast
+from django.conf import settings
+from django.core.management import call_command
+from django.utils.crypto import get_random_string
 from django_q.tasks import async_task
 from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
@@ -136,6 +139,11 @@ class SetupSerializer(serializers.ModelSerializer):
                 'geojson_file': str(e)
             })
 
+        # Rebuild config.js so the public map reflects the new boundaries
+        # (process_geojson_file only writes source/country.topojson).
+        if not settings.TEST_ENV:
+            call_command("generate_config")
+
         # Create the SiteConfig (without the geojson_file field)
         validated_data['uuid'] = uuid4()
         site_config = SiteConfig.objects.create(**validated_data)
@@ -178,6 +186,10 @@ class SetupSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'geojson_file': str(e)
                 })
+
+            # Rebuild config.js so the public map reflects the new boundaries.
+            if not settings.TEST_ENV:
+                call_command("generate_config")
 
         return instance
 
@@ -396,7 +408,7 @@ class InitialUserSerializer(serializers.Serializer):
             r = SystemUser.objects._create_user(
                 name=reviewer['name'],
                 email=reviewer['email'],
-                password=SystemUser.objects.make_random_password(),
+                password=get_random_string(length=12),
                 role=UserRoleTypes.reviewer,
                 organization_id=reviewer.get('organization_id')
             )
