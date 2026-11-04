@@ -399,6 +399,68 @@ copy_geonode_settings() {
     echo ""
 }
 
+# Function to keep the app DB role password in sync with app/.env (dev only).
+#
+# Postgres only sets the DB_USER password when the pg-data volume is first
+# initialised. If app/.env's DB_PASSWORD is later regenerated (e.g. re-running
+# configure.sh, which rolls POSTGRES_PASSWORD/DB_PASSWORD) while the old volume
+# persists, the app can no longer authenticate and backend/worker crash
+# silently. Re-assert the role password from app/.env on every dev start via
+# the local trust socket (needs no stored password). Idempotent, non-destructive
+# (no data loss). Dev only — prod volumes/creds are stable and managed outside.
+sync_app_db_password() {
+    local app_env="$SCRIPT_DIR/app/.env"
+    if [[ ! -f "$app_env" ]]; then
+        echo "Warning: $app_env not found, skipping DB password sync."
+        return 0
+    fi
+
+    local db_user db_pass
+    db_user=$(grep -E "^DB_USER=" "$app_env" | cut -d'=' -f2-)
+    db_pass=$(grep -E "^DB_PASSWORD=" "$app_env" | cut -d'=' -f2-)
+    if [[ -z "$db_user" || -z "$db_pass" ]]; then
+        echo "Warning: DB_USER/DB_PASSWORD missing in app/.env, skipping DB password sync."
+        return 0
+    fi
+
+    echo "========================================"
+    echo "Syncing dev DB password for role '$db_user' from app/.env..."
+    echo "========================================"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] Would ALTER USER $db_user with the password from app/.env and restart backend+worker"
+        echo ""
+        return 0
+    fi
+
+    local db_cid
+    db_cid=$(cd "$SCRIPT_DIR/app" && docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml ps -q db 2>/dev/null)
+    if [[ -z "$db_cid" ]]; then
+        echo "Warning: db container not found, skipping DB password sync."
+        echo ""
+        return 0
+    fi
+
+    # Wait for Postgres to accept local connections.
+    local i
+    for i in $(seq 1 30); do
+        docker exec "$db_cid" pg_isready -U postgres >/dev/null 2>&1 && break
+        sleep 2
+    done
+
+    # Double any single quotes to keep the SQL literal safe.
+    local db_pass_sql="${db_pass//\'/\'\'}"
+    if docker exec "$db_cid" psql -U postgres -v ON_ERROR_STOP=1 \
+        -c "ALTER USER \"$db_user\" WITH PASSWORD '$db_pass_sql';" >/dev/null 2>&1; then
+        echo "DB password in sync. Restarting backend and worker..."
+        (cd "$SCRIPT_DIR/app" && docker compose -f docker-compose.dev.yml -f docker-compose.dev.override.yml up -d backend worker >/dev/null 2>&1)
+        echo "Backend and worker restarted."
+    else
+        echo "Warning: could not sync DB password (role may not exist yet on a fresh volume); skipping."
+    fi
+    echo ""
+}
+
 # Function to stop docker-compose for a specific service
 stop_service() {
     local service="$1"
@@ -571,6 +633,12 @@ else
             run_service "$service" "$MODE"
         done
 
+        # Dev: keep the app DB role password aligned with app/.env so a stale
+        # pg-data volume never silently breaks backend/worker auth.
+        if [[ "$MODE" == "dev" ]]; then
+            sync_app_db_password
+        fi
+
         # Connect app network to geonode network in development mode
         if [[ "$MODE" == "dev" ]]; then
             echo "========================================"
@@ -599,6 +667,11 @@ else
     else
         # Run specific service
         run_service "$SERVICE" "$MODE"
+
+        # Dev: keep the app DB role password aligned with app/.env (see fn).
+        if [[ "$MODE" == "dev" && "$SERVICE" == "app" ]]; then
+            sync_app_db_password
+        fi
     fi
 
     echo "========================================"
