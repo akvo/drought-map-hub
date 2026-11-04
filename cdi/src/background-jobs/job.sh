@@ -1,24 +1,11 @@
 #!/bin/bash
 
+# Processing mode: "recent" (last 2 years, for post-refactor validation) or
+# "all" (full 2012-present history, for VM production deployment).
+MODE=${1:-recent}
+
 # Get the root directory of the project
 root_path="$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")"
-
-skip_download=false
-
-# Parse command line arguments
-for arg in "$@"; do
-    case $arg in
-    --skip-download)
-        skip_download=true
-        echo "Skip download mode enabled"
-        ;;
-    *)
-        echo "Unknown argument: $arg"
-        echo "Usage: $0 [--skip-download]"
-        exit 1
-        ;;
-    esac
-done
 
 # Load environment variables from .env file in the root directory
 export $(grep -v '^#' "$root_path/.env" | xargs)
@@ -26,15 +13,19 @@ export $(grep -v '^#' "$root_path/.env" | xargs)
 # Change to the directory of the script
 cd "$(dirname "$0")"
 
+# Ensure scaffolding dirs exist (container builds / prod named volumes start empty).
+mkdir -p ../../logs ../../input_data ../../output_data
+
 source ./utils.sh
-source ./job_00_login.sh
 source ./job_01_check-dataset.sh
-source ./job_02_extract-n-rename-chirps.sh
 source ./job_03_run_cdi.sh
 source ./job_04_upload_to_geonode.sh
+source ./job_05_sync_to_portal.sh
 
-# Exit if wget, pup, gunzip, and curl aren't available
-for cmd in wget pup gunzip curl; do
+echo "Running pipeline in MODE=${MODE}"
+
+# Exit if wget, pup, and curl aren't available
+for cmd in wget pup curl; do
     if ! command -v $cmd &>/dev/null; then
         echo "$cmd could not be found, please install it to proceed."
         exit 1
@@ -45,17 +36,17 @@ echo "All required commands are available."
 # Function to get weight values from config file
 get_weight_from_config() {
     local dataset_name="$1"
-    local config_file="$root_path/config/cdi_project_settings.json"
+    local config_file="$root_path/src/cdi-scripts/cdi_project_settings.conf"
 
     if [ ! -f "$config_file" ]; then
         echo "Config file not found: $config_file" >&2
         return 1
     fi
 
-    # Extract weight value using jq
-    local weight=$(jq -r ".cdi_parameters.weights.${dataset_name}" "$config_file" 2>/dev/null)
+    # Extract weight value using grep and sed
+    local weight=$(grep -A 10 '"weights"' "$config_file" | grep "\"$dataset_name\"" | sed 's/.*: *\([0-9.]*\).*/\1/')
 
-    if [ -z "$weight" ] || [ "$weight" = "null" ]; then
+    if [ -z "$weight" ]; then
         echo "0"
     else
         echo "$weight"
@@ -69,47 +60,45 @@ is_weight_positive() {
     awk -v w="$weight" 'BEGIN { exit (w <= 0) }'
 }
 
-# Execute download commands only if --skip-download is not set
-if [ "$skip_download" = false ]; then
-    echo "Starting download phase..."
-    login_and_download_cookies
+# Get weight values from config
+weight_esi=$(get_weight_from_config "esi")
+weight_evi2=$(get_weight_from_config "evi2")
+weight_spi=$(get_weight_from_config "spi")
+weight_sm=$(get_weight_from_config "sm")
 
-    check_and_download_chirps_dataset
-    extract_and_rename_chirps
+echo "Dataset weights from config: ESI=$weight_esi, EVI2=$weight_evi2, SPI=$weight_spi, SM=$weight_sm"
 
-    # Get weight values from config
-    weight_lst=$(get_weight_from_config "lst")
-    weight_ndvi=$(get_weight_from_config "ndvi")
-    weight_sm=$(get_weight_from_config "sm")
-
-    echo "Dataset weights from config: LST=$weight_lst, NDVI=$weight_ndvi, SM=$weight_sm"
-
-    # Conditional dataset downloads based on weights
-    if is_weight_positive "$weight_lst"; then
-        echo "LST weight ($weight_lst) > 0, downloading LST dataset..."
-        check_and_download_LST_dataset
-    else
-        echo "LST weight ($weight_lst) = 0, skipping LST dataset download"
-    fi
-
-    if is_weight_positive "$weight_ndvi"; then
-        echo "NDVI weight ($weight_ndvi) > 0, downloading NDVI dataset..."
-        check_and_download_NDVI_dataset
-    else
-        echo "NDVI weight ($weight_ndvi) = 0, skipping NDVI dataset download"
-    fi
-
-    if is_weight_positive "$weight_sm"; then
-        echo "SM weight ($weight_sm) > 0, downloading SM dataset..."
-        check_and_download_SM_dataset
-    else
-        echo "SM weight ($weight_sm) = 0, skipping SM dataset download"
-    fi
+# Conditional dataset downloads based on weights (datasets with weight 0 are skipped)
+if is_weight_positive "$weight_esi"; then
+    echo "ESI weight ($weight_esi) > 0, downloading ESI dataset..."
+    check_and_download_ESI_dataset "$MODE"
 else
-    echo "Download phase skipped due to --skip-download flag"
+    echo "ESI weight ($weight_esi) = 0, skipping ESI dataset download"
+fi
+
+if is_weight_positive "$weight_evi2"; then
+    echo "EVI2 weight ($weight_evi2) > 0, downloading EVI2 dataset..."
+    check_and_download_EVI2_dataset "$MODE"
+else
+    echo "EVI2 weight ($weight_evi2) = 0, skipping EVI2 dataset download"
+fi
+
+if is_weight_positive "$weight_spi"; then
+    echo "SPI weight ($weight_spi) > 0, downloading SPI dataset..."
+    check_and_download_SPI_dataset "$MODE"
+else
+    echo "SPI weight ($weight_spi) = 0, skipping SPI dataset download"
+fi
+
+if is_weight_positive "$weight_sm"; then
+    echo "SM weight ($weight_sm) > 0, downloading SM dataset..."
+    check_and_download_SM_dataset "$MODE"
+else
+    echo "SM weight ($weight_sm) = 0, skipping SM dataset download"
 fi
 
 cleanup_output_data
 
-run_cdi_scripts
-upload_to_geonode
+run_cdi_scripts "$MODE"
+# upload_to_geonode
+# sync_geonode_to_portal

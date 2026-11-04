@@ -1,0 +1,6 @@
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.claude
+**/.urs_cookies
+**/wget-log
