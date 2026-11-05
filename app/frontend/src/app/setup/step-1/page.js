@@ -9,6 +9,7 @@ import {
   Space,
   Upload,
   Checkbox,
+  ColorPicker,
   Select,
   Divider,
   Table,
@@ -23,6 +24,16 @@ import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
 
 const { useForm } = Form;
 const { Title } = Typography;
+
+// DIH-9: optional modules the operator can toggle during setup.
+const MODULE_OPTIONS = [
+  {
+    label: "GeoNode — publish CDI layers to a GeoNode instance",
+    value: "geonode",
+  },
+  { label: "Weather stations", value: "weather" },
+  { label: "IKS (Indigenous Knowledge System)", value: "iks" },
+];
 
 const Step1Page = () => {
   const [loading, setLoading] = useState(false);
@@ -51,6 +62,17 @@ const Step1Page = () => {
       if (values.country) {
         formData.append("country", values.country);
       }
+      // DIH-9: branding colour + optional module flags
+      const colorHex = values.primary_color?.toHexString
+        ? values.primary_color.toHexString()
+        : values.primary_color || "#3E5EB9";
+      formData.append("primary_color", colorHex);
+      const checkedModules = values.modules || [];
+      const modulesObj = MODULE_OPTIONS.reduce((acc, { value }) => {
+        acc[value] = checkedModules.includes(value);
+        return acc;
+      }, {});
+      formData.append("modules", JSON.stringify(modulesObj));
       // Handle file upload for geojson_file
       if (values.geojson_file && values.geojson_file?.[0]) {
         const file = values.geojson_file[0];
@@ -70,6 +92,10 @@ const Step1Page = () => {
           }
           if (org.is_collaborator) {
             formData.append(`organizations[${index}][is_collaborator]`, "true");
+          }
+          // DIH-9: exactly one host per instance (single-choice).
+          if (values.host_index === index) {
+            formData.append(`organizations[${index}][is_host]`, "true");
           }
           // Handle logo file
           if (org.logo && org.logo.fileList) {
@@ -137,8 +163,15 @@ const Step1Page = () => {
         payload: appStorage,
       });
       // If appStorage exists, set form values
+      const hostIndex =
+        appStorage.organizations?.findIndex((o) => o.is_host) ?? -1;
       form.setFieldsValue({
         name: appStorage.name || "",
+        primary_color: appStorage.primary_color || "#3E5EB9",
+        modules: appStorage.modules
+          ? Object.keys(appStorage.modules).filter((k) => appStorage.modules[k])
+          : ["geonode"],
+        host_index: hostIndex >= 0 ? hostIndex : 0,
         // Note: File inputs cannot be set programmatically for security reasons
         organizations: appStorage.organizations?.map((org) => ({
           name: org.name || "",
@@ -273,7 +306,12 @@ const Step1Page = () => {
         className="w-full flex flex-col items-center"
         onFinish={onFinish}
         form={form}
-        initialValues={{ organizations: [{}] }}
+        initialValues={{
+          organizations: [{}],
+          primary_color: "#3E5EB9",
+          modules: ["geonode"],
+          host_index: 0,
+        }}
       >
         <div className="w-full max-w-3xl mb-6">
           <Form.Item
@@ -301,6 +339,20 @@ const Step1Page = () => {
                 </Select.Option>
               ))}
             </Select>
+          </Form.Item>
+          <Form.Item
+            label="Brand colour"
+            name="primary_color"
+            help="Primary colour used across the public dashboard."
+          >
+            <ColorPicker format="hex" showText />
+          </Form.Item>
+          <Form.Item
+            label="Optional modules"
+            name="modules"
+            help="Enable only the features this deployment uses."
+          >
+            <Checkbox.Group options={MODULE_OPTIONS} />
           </Form.Item>
           <Form.Item
             label="Country Boundary (GeoJSON)"
@@ -441,98 +493,111 @@ const Step1Page = () => {
           Personalize your platform with your organization’s logo (PNG
           recommended, max 1MB per file).
         </p>
-        <Form.List name="organizations">
-          {(fields, { add, remove }) => (
-            <div className="w-full max-w-3xl mb-6 flex flex-col gap-4">
-              {fields.map(({ key, name, ...restField }) => (
-                // image upload input
-                <div key={key} className="p-4 border rounded-lg">
-                  <Flex justify="space-between">
-                    <Form.Item
-                      {...restField}
-                      label="Organization Logo"
-                      name={[name, "logo"]}
-                      valuePropName="fileList"
-                      getValueFromEvent={(e) =>
-                        Array.isArray(e) ? e : e && e.fileList
-                      }
-                      help="Upload the logo of the organization."
-                      rules={[
-                        { required: true, message: "Please upload a logo" },
-                      ]}
-                    >
-                      <Upload
-                        accept="image/*"
-                        beforeUpload={() => false}
-                        maxCount={1}
-                        listType="picture-card"
+        <Form.Item
+          name="host_index"
+          className="w-full max-w-3xl"
+          help="Only one organization can be the host; its logo becomes the app brand/header logo."
+        >
+          <Radio.Group className="w-full">
+            <Form.List name="organizations">
+              {(fields, { add, remove }) => (
+                <div className="w-full flex flex-col gap-4">
+                  {fields.map(({ key, name, ...restField }) => (
+                    // image upload input
+                    <div key={key} className="p-4 border rounded-lg">
+                      <Flex justify="space-between">
+                        <Form.Item
+                          {...restField}
+                          label="Organization Logo"
+                          name={[name, "logo"]}
+                          valuePropName="fileList"
+                          getValueFromEvent={(e) =>
+                            Array.isArray(e) ? e : e && e.fileList
+                          }
+                          help="Upload the logo of the organization."
+                          rules={[
+                            { required: true, message: "Please upload a logo" },
+                          ]}
+                        >
+                          <Upload
+                            accept="image/*"
+                            beforeUpload={() => false}
+                            maxCount={1}
+                            listType="picture-card"
+                          >
+                            <div>
+                              <span>📷</span>
+                              <div style={{ marginTop: 8 }}>Upload</div>
+                            </div>
+                          </Upload>
+                        </Form.Item>
+                        <span>
+                          <Button
+                            onClick={() => remove(name)}
+                            type="dashed"
+                            danger
+                          >
+                            Remove
+                          </Button>
+                        </span>
+                      </Flex>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "name"]}
+                        label="Organization Name"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input the organization name",
+                          },
+                        ]}
                       >
-                        <div>
-                          <span>📷</span>
-                          <div style={{ marginTop: 8 }}>Upload</div>
-                        </div>
-                      </Upload>
-                    </Form.Item>
-                    <span>
-                      <Button onClick={() => remove(name)} type="dashed" danger>
-                        Remove
-                      </Button>
-                    </span>
-                  </Flex>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "name"]}
-                    label="Organization Name"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please input the organization name",
-                      },
-                    ]}
-                  >
-                    <Input placeholder="Organization Name" />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "website"]}
-                    label="Organization Website"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please input the organization website",
-                      },
-                      {
-                        type: "url",
-                        message: "Please enter a valid URL",
-                      },
-                    ]}
-                  >
-                    <Input placeholder="Organization Website" type="url" />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "is_twg"]}
-                    help="This organization is part of the Technical Working Group as a Reviewer."
-                    valuePropName="checked"
-                  >
-                    <Checkbox>Is Technical Working Group</Checkbox>
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "is_collaborator"]}
-                    help="This organization will be listed as a collaborator on the platform."
-                    valuePropName="checked"
-                  >
-                    <Checkbox>Is Collaborator</Checkbox>
+                        <Input placeholder="Organization Name" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "website"]}
+                        label="Organization Website"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input the organization website",
+                          },
+                          {
+                            type: "url",
+                            message: "Please enter a valid URL",
+                          },
+                        ]}
+                      >
+                        <Input placeholder="Organization Website" type="url" />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "is_twg"]}
+                        help="This organization is part of the Technical Working Group as a Reviewer."
+                        valuePropName="checked"
+                      >
+                        <Checkbox>Is Technical Working Group</Checkbox>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "is_collaborator"]}
+                        help="This organization will be listed as a collaborator on the platform."
+                        valuePropName="checked"
+                      >
+                        <Checkbox>Is Collaborator</Checkbox>
+                      </Form.Item>
+                      <Radio value={name}>Is Host Organization</Radio>
+                    </div>
+                  ))}
+                  <Form.Item>
+                    <Button onClick={() => add()}>Add Logo</Button>
                   </Form.Item>
                 </div>
-              ))}
-              <Form.Item>
-                <Button onClick={() => add()}>Add Logo</Button>
-              </Form.Item>
-            </div>
-          )}
-        </Form.List>
+              )}
+            </Form.List>
+          </Radio.Group>
+        </Form.Item>
         <Divider />
         <Flex justify="end" className="w-full">
           <Button type="primary" htmlType="submit" loading={loading}>
