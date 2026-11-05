@@ -225,6 +225,15 @@ TEST_ENV = environ.get("TEST_ENV") or False
 CSRF_TRUSTED_ORIGINS = environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
 SETUP_SECRET_KEY = environ.get("SETUP_SECRET_KEY")
 
+# Optional feature modules (DIH-2). Comma-separated; unset = all modules on.
+# See utils.modules.module_enabled.
+_dih_modules_raw = environ.get("DIH_MODULES")
+DIH_MODULES = (
+    None
+    if _dih_modules_raw is None
+    else [m.strip() for m in _dih_modules_raw.split(",") if m.strip()]
+)
+
 
 # Image upload settings
 MEDIA_URL = "/media/"

@@ -1,6 +1,12 @@
 from django.db import models
 
 
+def default_modules():
+    # DIH-9: per-client optional-module flags. GeoNode on by default so an
+    # unconfigured instance keeps today's behaviour.
+    return {"geonode": True, "weather": False, "iks": False}
+
+
 class SiteConfig(models.Model):
     uuid = models.CharField(max_length=36, unique=True)
     name = models.CharField(max_length=155)
@@ -8,6 +14,8 @@ class SiteConfig(models.Model):
     geojson_file = models.CharField(max_length=191, blank=True, null=True)
     map_center = models.JSONField(blank=True, null=True)
     map_name_key = models.CharField(max_length=55, blank=True, null=True)
+    primary_color = models.CharField(max_length=7, default="#3E5EB9")
+    modules = models.JSONField(default=default_modules)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -26,6 +34,7 @@ class Organization(models.Model):
     )
     is_twg = models.BooleanField(default=False)
     is_collaborator = models.BooleanField(default=False)
+    is_host = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

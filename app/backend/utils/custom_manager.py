@@ -1,5 +1,5 @@
 from django.contrib.auth.base_user import BaseUserManager
-from utils.soft_deletes_model import SoftDeletesManager
+from utils.soft_deletes_model import SoftDeletesManager, SoftDeletesQuerySet
 from uuid import uuid4
 from api.v1.v1_users.constants import UserRoleTypes
 
@@ -10,10 +10,25 @@ class UserManager(BaseUserManager, SoftDeletesManager):
     def _create_user(self, email, password, **extra_fields):
         """
         Creates and saves a User with the given email and password.
+
+        If a soft-deleted account already uses this email, restore and
+        overwrite it instead of failing on the unique-email constraint.
+        (Active duplicates are rejected earlier by serializer validation.)
         """
         if not email:
             raise ValueError("The given email must be set")
-        user = self.model(email=email, **extra_fields)
+        user = (
+            SoftDeletesQuerySet(self.model)
+            .only_deleted()
+            .filter(email=email)
+            .first()
+        )
+        if user is not None:
+            user.deleted_at = None
+            for field, value in extra_fields.items():
+                setattr(user, field, value)
+        else:
+            user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.email_verification_code = uuid4()
         user.save(using=self._db)
