@@ -1,4 +1,4 @@
-import { USER_ROLES } from "@/static/config";
+import { USER_ROLES, THEME_PRESETS, DEFAULT_THEME } from "@/static/config";
 import { Button } from "antd";
 import Link from "next/link";
 
@@ -91,3 +91,8 @@ export const getProfileDropdownItems = (user, isPublic = false) => {
     ),
   }));
 };
+
+// DIH-9: resolve a stored theme name to its full colour set, falling back to
+// the default theme when the name is unknown.
+export const resolveTheme = (name) =>
+  THEME_PRESETS.find((theme) => theme.name === name) || DEFAULT_THEME;

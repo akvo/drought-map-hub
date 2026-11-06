@@ -96,6 +96,68 @@ export const APP_SETTINGS = {
     "The DroughtMap Hub is a platform designed to provide streamlined, user-friendly, and validated Combined Drought Indicator (CDI) products. It enhances drought monitoring capabilities by automating data management and promoting public access to critical information.",
 };
 
+// DIH-9: curated brand themes for the setup wizard. Each theme sets every
+// colour explicitly (no runtime colour maths) so it stays readable and easy
+// to maintain. To add a theme later, append one object with the same keys:
+//   background  bar (header/footer/badge) background
+//   foreground  text + icons sitting on `background`
+//   active      active menu item background
+//   button      primary buttons (label uses `foreground`)
+//   link        links + brand headings on white
+// The backend stores only the chosen theme `name` (SiteConfig.theme); the
+// frontend resolves the full colour set via resolveTheme().
+export const THEME_PRESETS = [
+  {
+    name: "Ocean Blue",
+    background: "#3E5EB9",
+    foreground: "#FFFFFF",
+    active: "#2A4287",
+    button: "#3E5EB9",
+    link: "#3E5EB9",
+  },
+  {
+    name: "Indigo",
+    background: "#4338CA",
+    foreground: "#FFFFFF",
+    active: "#312E81",
+    button: "#4338CA",
+    link: "#4338CA",
+  },
+  {
+    name: "Teal",
+    background: "#0F766E",
+    foreground: "#FFFFFF",
+    active: "#0B5A54",
+    button: "#0F766E",
+    link: "#0F766E",
+  },
+  {
+    name: "Forest",
+    background: "#15803D",
+    foreground: "#FFFFFF",
+    active: "#0F5F2D",
+    button: "#15803D",
+    link: "#15803D",
+  },
+  {
+    name: "Maroon",
+    background: "#9F1239",
+    foreground: "#FFFFFF",
+    active: "#7A0E2C",
+    button: "#9F1239",
+    link: "#9F1239",
+  },
+  {
+    name: "Slate",
+    background: "#334155",
+    foreground: "#FFFFFF",
+    active: "#1E293B",
+    button: "#334155",
+    link: "#334155",
+  },
+];
+export const DEFAULT_THEME = THEME_PRESETS[0];
+
 export const RUNDECK_JOB_STATUS_COLOR = {
   succeeded: "green",
   failed: "red",
