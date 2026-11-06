@@ -12,14 +12,10 @@ const NavItem = ({ pathname, url, label }) => {
   return (
     <Link href={url} className="text-neutral-50">
       <button
-        className={classNames(
-          "text-white px-6 py-3 transition-colors duration-300",
-          {
-            "bg-rose-800 hover:bg-rose-900 ring-b ring-b-white":
-              pathname === url,
-            "hover:bg-rose-800": pathname !== url,
-          },
-        )}
+        className={classNames("px-6 py-3 transition-colors duration-300", {
+          "bg-primary-active text-primary-foreground": pathname === url,
+          "text-primary-foreground hover:bg-primary-active": pathname !== url,
+        })}
       >
         {label}
       </button>
@@ -49,7 +45,11 @@ const Navbar = ({ session }) => {
               trigger={["click"]}
               overlayClassName="dropdown-profile"
             >
-              <a role="button" className="text-white" aria-label="Profile">
+              <a
+                role="button"
+                className="text-primary-foreground"
+                aria-label="Profile"
+              >
                 <UserCircle size={32} />
               </a>
             </Dropdown>

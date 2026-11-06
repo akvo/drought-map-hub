@@ -1,5 +1,6 @@
 import os
 import ast
+import json
 from django.conf import settings
 from django.core.management import call_command
 from django.utils.crypto import get_random_string
@@ -24,6 +25,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'logo',
             'is_twg',
             'is_collaborator',
+            'is_host',
             'created_at',
             'updated_at'
         ]
@@ -44,6 +46,8 @@ class SetupSerializer(serializers.ModelSerializer):
             'geojson_file',
             'map_center',
             'map_name_key',
+            'theme',
+            'modules',
             'organizations',
             'created_at',
             'updated_at'
@@ -95,6 +99,7 @@ class SetupSerializer(serializers.ModelSerializer):
                     is_twg_val = data.get(is_twg_key)
                     is_collab_val = data.get(is_collab_key)
 
+                    is_host_val = data.get(f'organizations[{i}][is_host]')
                     org_data = {
                         'name': name_val,
                         'website': website_val,
@@ -102,6 +107,7 @@ class SetupSerializer(serializers.ModelSerializer):
                         'is_collaborator': is_collab_val in [
                             'true', 'True', '1', True
                         ],
+                        'is_host': is_host_val in ['true', 'True', '1', True],
                     }
                     if logo_key in data:
                         org_data['logo'] = data[logo_key]
@@ -113,6 +119,14 @@ class SetupSerializer(serializers.ModelSerializer):
                 # Create a mutable copy of data
                 data_dict = dict(data.items())
                 data_dict['organizations'] = organizations_data
+                # modules arrives as a JSON string over multipart.
+                if isinstance(data_dict.get('modules'), str):
+                    try:
+                        data_dict['modules'] = json.loads(
+                            data_dict['modules']
+                        )
+                    except (ValueError, TypeError):
+                        pass
                 return super().to_internal_value(data_dict)
         return super().to_internal_value(data)
 
@@ -218,6 +232,8 @@ class SetupResponseSerializer(serializers.ModelSerializer):
             'country',
             'geojson_file',
             'map_center',
+            'theme',
+            'modules',
             'created_at',
             'updated_at',
             'is_configured',
