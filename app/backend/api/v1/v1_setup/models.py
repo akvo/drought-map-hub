@@ -14,7 +14,7 @@ class SiteConfig(models.Model):
     geojson_file = models.CharField(max_length=191, blank=True, null=True)
     map_center = models.JSONField(blank=True, null=True)
     map_name_key = models.CharField(max_length=55, blank=True, null=True)
-    primary_color = models.CharField(max_length=7, default="#3E5EB9")
+    theme = models.CharField(max_length=50, default="Ocean Blue")
     modules = models.JSONField(default=default_modules)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

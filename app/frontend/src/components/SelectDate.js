@@ -9,7 +9,7 @@ dayjs.extend(advancedFormat);
 dayjs.extend(customParseFormat);
 
 const SelectDate = ({ label, options, onChange, value }) => (
-  <div className="text-sm font-bold bg-primary text-white pl-6 pr-1 py-1 rounded-md">
+  <div className="text-sm font-bold bg-primary text-primary-foreground pl-6 pr-1 py-1 rounded-md">
     <Space size="large">
       <span>{label}</span>
       <Select

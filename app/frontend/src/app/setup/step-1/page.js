@@ -9,7 +9,6 @@ import {
   Space,
   Upload,
   Checkbox,
-  ColorPicker,
   Select,
   Divider,
   Table,
@@ -21,6 +20,7 @@ import { api, setupApiFormData } from "@/lib/api";
 import { indexedDBStorage, storage } from "@/lib";
 import { calculateGeoJSONCenter, extractGeoJSONProperties } from "@/lib/geo";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
+import { THEME_PRESETS, DEFAULT_THEME } from "@/static/config";
 
 const { useForm } = Form;
 const { Title } = Typography;
@@ -62,11 +62,8 @@ const Step1Page = () => {
       if (values.country) {
         formData.append("country", values.country);
       }
-      // DIH-9: branding colour + optional module flags
-      const colorHex = values.primary_color?.toHexString
-        ? values.primary_color.toHexString()
-        : values.primary_color || "#3E5EB9";
-      formData.append("primary_color", colorHex);
+      // DIH-9: brand theme (stored by name) + optional module flags
+      formData.append("theme", values.theme || DEFAULT_THEME.name);
       const checkedModules = values.modules || [];
       const modulesObj = MODULE_OPTIONS.reduce((acc, { value }) => {
         acc[value] = checkedModules.includes(value);
@@ -167,7 +164,7 @@ const Step1Page = () => {
         appStorage.organizations?.findIndex((o) => o.is_host) ?? -1;
       form.setFieldsValue({
         name: appStorage.name || "",
-        primary_color: appStorage.primary_color || "#3E5EB9",
+        theme: appStorage.theme || DEFAULT_THEME.name,
         modules: appStorage.modules
           ? Object.keys(appStorage.modules).filter((k) => appStorage.modules[k])
           : ["geonode"],
@@ -308,7 +305,7 @@ const Step1Page = () => {
         form={form}
         initialValues={{
           organizations: [{}],
-          primary_color: "#3E5EB9",
+          theme: DEFAULT_THEME.name,
           modules: ["geonode"],
           host_index: 0,
         }}
@@ -341,11 +338,29 @@ const Step1Page = () => {
             </Select>
           </Form.Item>
           <Form.Item
-            label="Brand colour"
-            name="primary_color"
-            help="Primary colour used across the public dashboard."
+            label="Brand theme"
+            name="theme"
+            help="Pick a preset theme; each is tuned to stay readable."
           >
-            <ColorPicker format="hex" showText />
+            <Radio.Group>
+              <Space wrap>
+                {THEME_PRESETS.map((t) => (
+                  <Radio.Button
+                    key={t.name}
+                    value={t.name}
+                    style={{ height: "auto" }}
+                  >
+                    <span className="inline-flex items-center gap-2 py-1">
+                      <span
+                        className="inline-block w-4 h-4 rounded-sm border border-neutral-300"
+                        style={{ background: t.background }}
+                      />
+                      {t.name}
+                    </span>
+                  </Radio.Button>
+                ))}
+              </Space>
+            </Radio.Group>
           </Form.Item>
           <Form.Item
             label="Optional modules"

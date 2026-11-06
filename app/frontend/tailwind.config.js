@@ -10,7 +10,9 @@ module.exports = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        primary: "#3e5eb9",
+        primary: "var(--primary-color)",
+        "primary-foreground": "var(--primary-foreground)",
+        "primary-active": "var(--primary-active)",
       },
       backgroundImage: {
         "image-login": "url('/images/bg-image-login.png')",
