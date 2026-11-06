@@ -14,7 +14,7 @@ services:
   frontend:
     network_mode: service:mainnetwork
   pgadmin:
-    image: dpage/pgadmin4:5.7
+    image: dpage/pgadmin4:9.18
     environment:
       - PGADMIN_LISTEN_PORT=5050
       - PGADMIN_DEFAULT_EMAIL=dev@akvo.org
