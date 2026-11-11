@@ -2,7 +2,6 @@ from django.urls import re_path
 from .views import (
     get_config_file,
     ReviewViewSet,
-    CDIGeonodeAPI,
     PublicationViewSet,
     PublicationReviewsAPI,
     ReviewDetailsAPI,
@@ -29,11 +28,6 @@ urlpatterns = [
             }
         ),
         name="review-details",
-    ),
-    re_path(
-        r"^(?P<version>(v1))/admin/cdi-geonode",
-        CDIGeonodeAPI.as_view(),
-        name="cdi-geonode"
     ),
     re_path(
         r"^(?P<version>(v1))/admin/publications",

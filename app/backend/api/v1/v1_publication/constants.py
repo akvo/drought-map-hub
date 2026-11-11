@@ -33,15 +33,41 @@ class DroughtCategory:
 class CDIGeonodeCategory:
     cdi = "cdi-raster-map"
     spi = "spi-raster-map"
-    ndvi = "ndvi-raster-map"
-    lst = "lst-raster-map"
+    evi2 = "evi2-raster-map"  # was ndvi-raster-map
+    esi = "esi-raster-map"    # was lst-raster-map
+    sm = "sm-raster-map"      # SM now has weight > 0 and is exported
 
     FieldStr = {
         cdi: "CDI Raster Map",
         spi: "SPI Raster Map",
-        ndvi: "NDVI Raster Map",
-        lst: "LST Raster Map",
+        evi2: "EVI2 Raster Map",
+        esi: "ESI Raster Map",
+        sm: "SM Raster Map",
     }
+
+
+class RasterIndicatorTypes:
+    """CDI component indices stored per publication raster.
+
+    Mirrors the component categories in ``CDIGeonodeCategory`` (minus the
+    composite ``cdi``). The vocabulary here follows the hub's current
+    pipeline (LST/NDVI/SPI); the ESI/EVI2/SM rename is a separate pipeline
+    task (CDP-0) that updates both constants together.
+    """
+
+    lst = "lst"
+    ndvi = "ndvi"
+    spi = "spi"
+
+    FieldStr = {
+        lst: "LST percentile rank",
+        ndvi: "NDVI percentile rank",
+        spi: "SPI percentile rank",
+    }
+
+    @classmethod
+    def choices(cls):
+        return list(cls.FieldStr.items())
 
 
 class DroughtCategoryColor:

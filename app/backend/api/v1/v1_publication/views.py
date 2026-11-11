@@ -1,5 +1,4 @@
 import time
-import requests
 import geopandas as gpd
 import topojson as tp
 import matplotlib.pyplot as plt
@@ -19,12 +18,10 @@ from rest_framework.generics import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
-    inline_serializer,
     OpenApiParameter
 )
 from django.core.management import call_command
 from django.http import HttpResponse
-from django.conf import settings
 from django_q.tasks import async_task
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -32,8 +29,6 @@ from jsmin import jsmin
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
     ReviewSerializer,
-    CDIGeonodeListSerializer,
-    CDIGeonodeFilterSerializer,
     PublicationSerializer,
     PublicationInfoSerializer,
     CreatePublicationSerializer,
@@ -48,7 +43,6 @@ from api.v1.v1_publication.models import (
     Publication,
 )
 from api.v1.v1_publication.constants import (
-    CDIGeonodeCategory,
     PublicationStatus,
     DroughtCategory,
     ExportMapTypes,
@@ -62,7 +56,6 @@ from utils.default_serializers import (
     CommonOptionSerializer,
 )
 from utils.custom_serializer_fields import validate_serializers_message
-from math import ceil
 
 
 @extend_schema(
@@ -164,214 +157,6 @@ class ReviewViewSet(viewsets.ModelViewSet):
         )
 
 
-class CDIGeonodeAPI(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    @extend_schema(
-        summary="Fetch CDI Geonode resources",
-        description=(
-            "Fetch geodata resources from a specific category "
-            "to start publication process"
-        ),
-        tags=["Admin"],
-        parameters=[
-            OpenApiParameter(
-                name="page",
-                default=1,
-                required=False,
-                type=OpenApiTypes.NUMBER,
-                location=OpenApiParameter.QUERY,
-            ),
-            OpenApiParameter(
-                name="category",
-                default=CDIGeonodeCategory.cdi,
-                required=False,
-                enum=CDIGeonodeCategory.FieldStr.keys(),
-                type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-            ),
-            OpenApiParameter(
-                name="status",
-                required=False,
-                enum=PublicationStatus.FieldStr.keys(),
-                type=OpenApiTypes.NUMBER,
-                location=OpenApiParameter.QUERY,
-            ),
-            OpenApiParameter(
-                name="id",
-                required=False,
-                type=OpenApiTypes.NUMBER,
-                location=OpenApiParameter.QUERY,
-            ),
-        ],
-        request=CDIGeonodeFilterSerializer,
-        responses={
-            200: CDIGeonodeListSerializer(many=True),
-            (200, "application/json"): inline_serializer(
-                "CDIGeonodeListResponse",
-                fields={
-                    "current": serializers.IntegerField(),
-                    "total": serializers.IntegerField(),
-                    "total_page": serializers.IntegerField(),
-                    "data": CDIGeonodeListSerializer(many=True),
-                },
-            ),
-            400: DefaultResponseSerializer,
-            500: DefaultResponseSerializer,
-        },
-    )
-    def get(self, request, *args, **kwargs):
-        serializer = CDIGeonodeFilterSerializer(data=request.query_params)
-        if not serializer.is_valid():
-            raise ValidationError({
-                "message": "Invalid category parameter."
-            })
-        if serializer.validated_data.get(
-            "id"
-        ):
-            cdi_id = serializer.validated_data["id"]
-            response = requests.get(
-                f"{settings.GEONODE_BASE_URL}/api/v2/resources/{cdi_id}",
-                headers={'Host': settings.GEONODE_HOST}
-            )
-            data = response.json().get("resource", None)
-            if response.status_code == 200 and data:
-                publication = Publication.objects.filter(
-                    cdi_geonode_id=cdi_id
-                ).first()
-                year_month = publication.year_month \
-                    if publication else data.get("date")
-                return Response(
-                    CDIGeonodeListSerializer(
-                        instance={
-                            **data,
-                            "year_month": year_month,
-                            "publication_id": (
-                                publication.pk if publication else None
-                            ),
-                            "status": (
-                                publication.status if publication else None
-                            ),
-                        }
-                    ).data,
-                    status=status.HTTP_200_OK
-                )
-            return Response(
-                {"message": "Server Error: Unable to fetch data."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        category = serializer.validated_data.get(
-            "category",
-            CDIGeonodeCategory.cdi
-        )
-        publication_status = serializer.validated_data.get(
-            "status",
-            None
-        )
-        page = int(request.GET.get("page", "1"))
-        url = (
-            "{0}/api/v2/resources"
-            "?filter{{category.identifier}}={1}"
-            "&filter{{subtype}}=raster&page={2}&sort[]=-date"
-            .format(
-                settings.GEONODE_BASE_URL,
-                category,
-                page,
-            )
-        )
-        if publication_status:
-            ids = Publication.objects.filter(
-                status=publication_status
-            ).values_list("cdi_geonode_id", flat=True)
-            if len(ids):
-                filter_ids = "&".join(
-                    [
-                        f"filter{{pk.in}}={id}"
-                        for id in ids
-                    ]
-                )
-                url = (
-                    "{0}/api/v2/resources?{1}".format(
-                        settings.GEONODE_BASE_URL,
-                        filter_ids
-                    )
-                )
-                url = f"{url}&page={page}&sort[]=-date"
-        username = settings.GEONODE_ADMIN_USERNAME
-        password = settings.GEONODE_ADMIN_PASSWORD
-        response = requests.get(
-            url,
-            auth=(username, password),
-            headers={'Host': settings.GEONODE_HOST}
-        )
-        if response.status_code == 200:
-            data = response.json()
-            # Prepare the serialized data
-            serialized_data = [
-                CDIGeonodeListSerializer(
-                    instance={
-                        **item,
-                        "year_month": item.get("date"),
-                        "publication_id": None,
-                        "status": None,
-                    }
-                ).data
-                for item in data.get("resources", [])
-            ]
-
-            # Extract IDs from serialized data
-            cdi_geonode_ids = [int(item["pk"]) for item in serialized_data]
-
-            # Fetch related publications based on the IDs and status
-            publications_query = Publication.objects.filter(
-                cdi_geonode_id__in=cdi_geonode_ids
-            )
-            if publication_status:
-                publications_query = Publication.objects.filter(
-                    status=publication_status
-                )
-
-            # Optimize lookup by creating a dictionary of publications
-            publications_dict = {
-                publication.cdi_geonode_id: {
-                    "id": publication.pk,
-                    "status": publication.status,
-                    "year_month": publication.year_month
-                }
-                for publication in publications_query.all()
-            }
-            # Merge publication data into serialized_data
-            for item in serialized_data:
-                publication = publications_dict.get(
-                    int(item["pk"])
-                )
-                if publication:
-                    item["year_month"] = publication["year_month"]
-                    item["publication_id"] = publication["id"]
-                    item["status"] = publication["status"]
-            if publication_status:
-                data["total"] = publications_query.count()
-            total_page = ceil(int(data["total"]) / int(data["page_size"]))
-            return Response(
-                {
-                    "current": page,
-                    "total": data["total"],
-                    "total_page": total_page,
-                    "data": serialized_data
-                },
-                status=status.HTTP_200_OK
-            )
-        elif response.status_code == 400:
-            return Response(
-                {"message": "Bad Request: Invalid parameters."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response(
-            {"message": "Server Error: Unable to fetch data."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-
 @extend_schema(
     responses={200: PublicationSerializer},
     tags=["Admin"],
@@ -400,7 +185,9 @@ class PublicationViewSet(viewsets.ModelViewSet):
                 reviewers = serializer.validated_data.pop("reviewers", [])
                 subject = serializer.validated_data.pop("subject")
                 message = serializer.validated_data.pop("message")
-                download_url = serializer.validated_data.pop("download_url")
+                download_url = serializer.validated_data.pop(
+                    "download_url", None
+                )
 
                 # Save the publication
                 publication = serializer.save()
@@ -410,32 +197,39 @@ class PublicationViewSet(viewsets.ModelViewSet):
                     for reviewer in reviewers
                 ], bulk=False)
 
-                timestamp = int(time.time())
-                filename = "raster_{0}_{1}.tif".format(
-                    publication.cdi_geonode_id,
-                    timestamp
-                )
-                # Create a job
-                job = Jobs.objects.create(
-                    type=JobTypes.download_geonode_dataset,
-                    status=JobStatus.on_progress,
-                    info={
-                        "publication_id": publication.id,
-                        "filename": filename,
-                        "subject": subject,
-                        "message": message,
-                    },
-                )
-                hook = "download_geonode_dataset_results"
-                task_id = async_task(
-                    "api.v1.v1_jobs.job.download_geonode_dataset",
-                    download_url,
-                    filename,
-                    hook=f"api.v1.v1_jobs.job.{hook}",
-                )
-                # Update the job with the task ID
-                job.task_id = task_id
-                job.save()
+                if publication.cdi_geonode_id and download_url:
+                    # GeoNode path: download the raster, recompute
+                    # initial_values via zonal stats, then notify reviewers.
+                    timestamp = int(time.time())
+                    filename = "raster_{0}_{1}.tif".format(
+                        publication.cdi_geonode_id,
+                        timestamp
+                    )
+                    job = Jobs.objects.create(
+                        type=JobTypes.download_geonode_dataset,
+                        status=JobStatus.on_progress,
+                        info={
+                            "publication_id": publication.id,
+                            "filename": filename,
+                            "subject": subject,
+                            "message": message,
+                        },
+                    )
+                    hook = "download_geonode_dataset_results"
+                    task_id = async_task(
+                        "api.v1.v1_jobs.job.download_geonode_dataset",
+                        download_url,
+                        filename,
+                        hook=f"api.v1.v1_jobs.job.{hook}",
+                    )
+                    # Update the job with the task ID
+                    job.task_id = task_id
+                    job.save()
+                else:
+                    # geonode-less: trust the initial_values supplied in the
+                    # request (no raster to fetch), notify reviewers directly.
+                    from api.v1.v1_jobs.job import notify_reviewers
+                    notify_reviewers(publication, subject, message)
 
                 # Return the serialized publication data
                 return PublicationSerializer(publication).data

@@ -9,10 +9,7 @@ from .models import (
     Review,
 )
 from utils.custom_serializer_fields import (
-    CustomIntegerField,
     CustomCharField,
-    CustomURLField,
-    CustomDateTimeField,
     CustomListField,
     CustomPrimaryKeyRelatedField,
     CustomChoiceField,
@@ -24,8 +21,6 @@ from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from api.v1.v1_publication.constants import (
     DroughtCategory,
     ExportMapTypes,
-    CDIGeonodeCategory,
-    PublicationStatus,
 )
 
 
@@ -199,57 +194,6 @@ class ReviewListSerializer(serializers.ModelSerializer):
         ]
 
 
-class CDIGeonodeFilterSerializer(serializers.Serializer):
-    category = CustomChoiceField(
-        choices=list(CDIGeonodeCategory.FieldStr.keys()),
-        required=False,
-        allow_null=True,
-    )
-    status = CustomChoiceField(
-        choices=list(PublicationStatus.FieldStr.keys()),
-        required=False,
-        allow_null=False,
-    )
-    id = CustomIntegerField(
-        required=False,
-        allow_null=True,
-    )
-
-    class Meta:
-        fields = ["category", "status", "id"]
-
-
-class CDIGeonodeListSerializer(serializers.Serializer):
-    pk = CustomIntegerField()
-    title = CustomCharField()
-    detail_url = CustomURLField()
-    embed_url = CustomURLField()
-    thumbnail_url = CustomURLField()
-    download_url = CustomURLField()
-    created = CustomDateTimeField()
-    year_month = CustomCharField()
-    publication_id = CustomIntegerField(
-        allow_null=True
-    )
-    status = CustomIntegerField(
-        allow_null=True
-    )
-
-    class Meta:
-        fields = [
-            "pk",
-            "title",
-            "detail_url",
-            "embed_url",
-            "thumbnail_url",
-            "download_url",
-            "created",
-            "year_month",
-            "publication_id",
-            "status",
-        ]
-
-
 class PublicationReviewsSerializer(serializers.ModelSerializer):
     reviews = serializers.SerializerMethodField()
     users = serializers.SerializerMethodField()
@@ -343,7 +287,10 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
     )
     subject = CustomCharField()
     message = CustomCharField()
-    download_url = CustomCharField()
+    # Optional: only the GeoNode path needs a raster to download.
+    download_url = CustomCharField(
+        required=False, allow_blank=True, allow_null=True
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -366,6 +313,17 @@ class CreatePublicationSerializer(serializers.ModelSerializer):
                 "Please select at least one reviewer."
             )
         return value
+
+    def validate(self, attrs):
+        # Without a GeoNode id there is no raster to recompute from, so the
+        # pre-computed per-admin initial_values must be supplied upfront.
+        if not attrs.get("cdi_geonode_id") and not attrs.get("initial_values"):
+            raise serializers.ValidationError({
+                "initial_values": (
+                    "Required when cdi_geonode_id is not provided."
+                )
+            })
+        return attrs
 
     def to_representation(self, instance):
         return PublicationSerializer(instance).data

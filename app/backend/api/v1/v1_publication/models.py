@@ -39,7 +39,10 @@ def validate_json_values(json_values: list = []):
 
 class Publication(SoftDeletes):
     year_month = models.DateField(null=False)
-    cdi_geonode_id = models.IntegerField(null=False, unique=True)
+    # Optional: a publication can be created from pre-computed initial_values
+    # (geonode-less / GeoNode-down) without referencing a GeoNode resource.
+    # unique still holds for non-null ids (Postgres treats NULLs as distinct).
+    cdi_geonode_id = models.IntegerField(null=True, blank=True, unique=True)
     initial_values = models.JSONField(
         null=False,
         validators=[validate_json_values]

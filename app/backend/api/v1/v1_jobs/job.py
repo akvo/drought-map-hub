@@ -25,7 +25,7 @@ from urllib.parse import urlparse, urlunparse
 
 # Set up logging
 logger = logging.getLogger(__name__)
-tmp_dir = "./tmp"
+tmp_dir = os.path.join(settings.STORAGE_PATH, "tmp")
 
 
 def demo_q_func(name: str):
@@ -332,6 +332,40 @@ def generate_initial_cdi_values(
     return PublicationSerializer(publication).data
 
 
+def notify_reviewers(publication, subject, message):
+    """Dispatch a review-request email to each assigned reviewer.
+
+    Shared by the GeoNode-backed create chain (after the raster is downloaded
+    and initial_values recomputed) and the geonode-less create path (where
+    initial_values are supplied upfront and no raster is fetched)."""
+    for review in publication.reviews.all():
+        job = Jobs.objects.create(
+            type=JobTypes.review_request,
+            status=JobStatus.on_progress,
+            result=ReviewSerializer(review).data,
+        )
+        body = message \
+            .replace("{{reviewer_name}}", review.user.name) \
+            .replace(
+                "{{year_month}}",
+                publication.year_month.strftime("%Y-%m")
+            ) \
+            .replace(
+                "{{due_date}}",
+                publication.due_date.strftime("%Y-%m-%d")
+            )
+        task_id = async_task(
+            "api.v1.v1_jobs.job.notify_review_request",
+            review.user.email,
+            review.id,
+            subject,
+            body,
+            hook="api.v1.v1_jobs.job.email_notification_results",
+        )
+        job.task_id = task_id
+        job.save()
+
+
 def generate_initial_cdi_values_results(task):
     job = Jobs.objects.get(task_id=task.id)
     job.attempt = job.attempt + 1
@@ -372,40 +406,7 @@ def generate_initial_cdi_values_results(task):
             # No subject or message provided, so no email to send
             return
         # Send email to all reviewers
-        for review in publication.reviews.all():
-            # Create a job
-            job = Jobs.objects.create(
-                type=JobTypes.review_request,
-                status=JobStatus.on_progress,
-                result=ReviewSerializer(review).data,
-            )
-            # Replace placeholders in the message
-            body = message \
-                .replace(
-                    "{{reviewer_name}}",
-                    review.user.name
-                ) \
-                .replace(
-                    "{{year_month}}",
-                    publication.year_month.strftime("%Y-%m")
-                ) \
-                .replace(
-                    "{{due_date}}",
-                    publication.due_date.strftime("%Y-%m-%d")
-                )
-
-            # Dispatch the send email job for each reviewer
-            task_id = async_task(
-                "api.v1.v1_jobs.job.notify_review_request",
-                review.user.email,
-                review.id,
-                subject,
-                body,
-                hook="api.v1.v1_jobs.job.email_notification_results",
-            )
-            # Update the job with the task ID
-            job.task_id = task_id
-            job.save()
+        notify_reviewers(publication, subject, message)
 
     else:
         job.status = JobStatus.failed
