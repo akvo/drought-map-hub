@@ -21,6 +21,7 @@ import {
   PUBLICATION_STATUS_OPTIONS,
 } from "@/static/config";
 import { api } from "@/lib";
+import { useModule } from "@/lib/useModule";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 
@@ -38,6 +39,9 @@ const PublicationsPage = () => {
   const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
   const [status, setStatus] = useState(null);
   const router = useRouter();
+  // DIH-3: the whole CDI picker is GeoNode-sourced. With geonode off the
+  // /admin/cdi-geonode route 404s, so gate the fetch and the UI entirely.
+  const geonodeOn = useModule("geonode");
 
   const columns = [
     {
@@ -127,6 +131,13 @@ const PublicationsPage = () => {
   };
 
   const fetchData = useCallback(async () => {
+    if (!geonodeOn) {
+      setPublications([]);
+      setTotalData(0);
+      setLoading(false);
+      setPreload(false);
+      return;
+    }
     try {
       if (preload) {
         setPreload(false);
@@ -148,7 +159,7 @@ const PublicationsPage = () => {
       setLoading(false);
       setPreload(false);
     }
-  }, [preload, page, status, category]);
+  }, [preload, page, status, category, geonodeOn]);
 
   useEffect(() => {
     fetchData();
@@ -159,57 +170,69 @@ const PublicationsPage = () => {
         <div className="w-2/3">
           <Title level={2}>CDI Publication</Title>
         </div>
-        <Space className="w-1/3 flex justify-end">
-          <Select
-            options={MAP_CATEGORY_OPTIONS}
-            className="w-48"
-            placeholder="Filter by Category"
-            onChange={(value) => {
-              setPage(1);
-              if (value) {
-                setCategory(value);
-              } else {
-                setCategory(MAP_CATEGORY_OPTIONS[0].value);
-              }
-              setPreload(true);
-            }}
-            value={category}
-            allowClear
-          />
-          <Select
-            onChange={onChangeStatus}
-            options={PUBLICATION_STATUS_OPTIONS}
-            className="w-48"
-            placeholder="Filter by Status"
-            allowClear
-          />
-        </Space>
-      </Flex>
-      <Can I="read" a="Publication">
-        <Table
-          columns={columns}
-          dataSource={publications}
-          loading={loading}
-          rowClassName={"cursor-pointer"}
-          pagination={
-            totalData < PAGE_SIZE
-              ? false
-              : {
-                  current: page,
-                  pageSize: PAGE_SIZE,
-                  total: totalData,
-                  responsive: true,
-                  align: "center",
-                  position: ["bottomCenter"],
-                  onChange: (_page) => {
-                    setPage(_page);
-                    setPreload(true);
-                  },
+        {geonodeOn && (
+          <Space className="w-1/3 flex justify-end">
+            <Select
+              options={MAP_CATEGORY_OPTIONS}
+              className="w-48"
+              placeholder="Filter by Category"
+              onChange={(value) => {
+                setPage(1);
+                if (value) {
+                  setCategory(value);
+                } else {
+                  setCategory(MAP_CATEGORY_OPTIONS[0].value);
                 }
-          }
-          rowKey="pk"
-        />
-      </Can>
+                setPreload(true);
+              }}
+              value={category}
+              allowClear
+            />
+            <Select
+              onChange={onChangeStatus}
+              options={PUBLICATION_STATUS_OPTIONS}
+              className="w-48"
+              placeholder="Filter by Status"
+              allowClear
+            />
+          </Space>
+        )}
+      </Flex>
+      {geonodeOn ? (
+        <Can I="read" a="Publication">
+          <Table
+            columns={columns}
+            dataSource={publications}
+            loading={loading}
+            rowClassName={"cursor-pointer"}
+            pagination={
+              totalData < PAGE_SIZE
+                ? false
+                : {
+                    current: page,
+                    pageSize: PAGE_SIZE,
+                    total: totalData,
+                    responsive: true,
+                    align: "center",
+                    position: ["bottomCenter"],
+                    onChange: (_page) => {
+                      setPage(_page);
+                      setPreload(true);
+                    },
+                  }
+            }
+            rowKey="pk"
+          />
+        </Can>
+      ) : (
+        <div className="w-full py-16 text-center space-y-2">
+          <Title level={4}>GeoNode module disabled</Title>
+          <p className="text-gray-500">
+            CDI publication browsing needs the GeoNode module. Enable it in
+            setup to manage CDI maps.
+          </p>
+        </div>
+      )}
       <Modal
         title={preview?.title}
         open={preview?.pk}

@@ -389,7 +389,7 @@ const SettingsPage = () => {
 
                 <Title level={3}>CDI Weight</Title>
                 <Form.Item
-                  label="LST Weight"
+                  label="ESI Weight"
                   name="lst_weight"
                   rules={[
                     {
@@ -401,12 +401,12 @@ const SettingsPage = () => {
                     step={0.1}
                     min={0}
                     max={1}
-                    placeholder="LST Weight"
+                    placeholder="ESI Weight"
                     style={{ width: "50%" }}
                   />
                 </Form.Item>
                 <Form.Item
-                  label="NDVI Weight"
+                  label="EVI2 Weight"
                   name="ndvi_weight"
                   rules={[
                     {
@@ -418,7 +418,7 @@ const SettingsPage = () => {
                     step={0.1}
                     min={0}
                     max={1}
-                    placeholder="NDVI Weight"
+                    placeholder="EVI2 Weight"
                     style={{ width: "50%" }}
                   />
                 </Form.Item>
