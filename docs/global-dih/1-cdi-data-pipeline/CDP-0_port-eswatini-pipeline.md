@@ -192,6 +192,8 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 ### D-3: Keep the old GeoNode categories alongside the new ones
 **Rationale**: existing instances have published `lst-raster-map`/`ndvi-raster-map` layers that the public "browse" and "compare" pages may still link to.
 
+**E2 status**: the pipeline + hub were **renamed** to `esi/evi2/sm` (`esi-raster-map` ← `lst`, `evi2-raster-map` ← `ndvi`, plus new `sm-raster-map`) across `upload_to_geonode_job.py`, `sync_geonode_publications_job.py`, the GeoNode seeder `add_cdi_categories.py`, and the hub `CDIGeonodeCategory`. The old `lst/ndvi-raster-map` categories are **left in GeoNode as orphans** (not deleted) so old browse/compare links still resolve — matching this decision's intent. The weight-reconfig CLI (`change-cdi-weight.sh`) accepts both the legacy `--lst_weight/--ndvi_weight` and the new `--esi_weight/--evi2_weight` (the app's DB/API/Rundeck option names stay `lst_weight`/`ndvi_weight`; a full identifier rename needs a migration + Rundeck job re-create, deferred).
+
 ### D-4: Create a new, optional `v1_geonode` app from the eswatini `v1_publication` push endpoints
 **Decision** (2026-10-12, OQ-2): the geonode publication-push endpoints have no app of their own in the eswatini hub — they live in `v1_publication`. In the generic hub, extract them into a **new, standalone, optional** app `api/v1/v1_geonode` (see §3). The ported pipeline step `job_05_sync_to_portal.sh` POSTs to it.
 
@@ -268,6 +270,13 @@ Reviewable commits, in order (mirror the §2 AC commit list):
 - [x] **OQ-4**: After the port, does `eswatini-droughtmap-hub-cdi` keep running for Eswatini production, or does Eswatini move to the generic hub's `cdi/`? Until decided, fixes must land in both. **— RESOLVED 2026-10-12: keep both — `eswatini-droughtmap-hub-cdi` stays Eswatini-only, this `cdi/` is the generic/global pipeline. They may diverge; no byte-sync promise.**
 
 ---
+
+## 10b. E2 operational fixes (surfaced running the ported pipeline)
+
+- **Config reaches host runs.** Rundeck runs the pipeline on the host via `~/.myenv`, not the `cdi` container, so the compose bind-mount `config/cdi_project_settings.json → src/cdi-scripts/cdi_project_settings.conf` does not apply. The scripts (`config_reader.py`) **and** `job.sh get_weight_from_config` read the `.conf`. `job.sh` now `cp`-syncs the client `.json` → `.conf` at run start (guarded by `cmp -s`) so edits made via `change-cdi-bounds.sh`/`change-cdi-weight.sh` (which write the `.json`) actually take effect.
+- **Bounds must fit the NDMC raster** (`12–43°E, 18–36°S`, 0.05°) or `STEP_0100` aborts with "Clipped grid is X but expected Y" — it reads a fixed `rows×cols` window from the top-left corner. Northern-hemisphere-of-18°S areas (e.g. northern Namibia) have no data in this NDMC tile.
+- **Weights must total 1.0 over exactly the active params.** `STEP_0301` sums every key in `weights`, so stale `lst/ndvi` keys left beside `esi/evi2/spi/sm` push the total past 1.0. `change-cdi-weight.sh` now replaces the whole `weights` object (self-healing) and `get_categories()` in `upload_to_geonode_job.py` always refreshes its cached `geonode_category.json` instead of writing it once.
+- **GeoNode host must be consistent.** `geonode/.env` `SITEURL`/`HTTP_HOST`/`ALLOWED_HOSTS` must name the same host as the hub's `GEONODE_HOST` and the pipeline's `GEONODE_URL`, or nginx drops the connection / Django 400s. `configure.sh` now passes `--hostname` to `create-envfile.py` so these line up at provisioning (see [DIH-1 §11](../2-v2-porting/DIH-1_v1-geonode-optional-app.md)).
 
 ## 11. References
 

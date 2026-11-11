@@ -5,9 +5,11 @@
 **Task ID**: DIH-3
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-30
-**Status**: Draft
+**Status**: Implemented (E2) — with a plumbing correction, see "Implementation note".
 **Effort**: ~5h (incl. agentic coding).
 **Depends on**: [DIH-2](DIH-2_module-system.md)
+
+> **Implementation note (E2).** Step 1/2's assumption — that `getAppConfig()` / the app context already carries `modules` after setup — was **false off the setup flow**: `AppContextProvider` seeded `appConfig = { name: null }` and `layout.js` never injected the server-read cookie, so `SET_APP_CONFIG` only ran inside the setup pages. On `/publications` etc. `appConfig.modules` was `undefined`, and `useModule` falls back to "all on" → every gate read `true` regardless of `SiteConfig.modules`. Fixed by: (a) `AppContextProvider` accepts an `appConfig` prop and seeds the reducer with it, `layout.js` passes `getAppConfig()`; (b) `useModule` reads `ctx.appConfig.modules` (dict or list; empty/absent = all on, matching the backend); (c) `middleware.js` refreshes the set-once `appConfig` cookie when it predates the `modules` flag. Residual: a cookie holding a stale `modules` **value** (not absent) still waits out the 1-day expiry — acceptable since module on/off is a provision-time decision.
 
 > Eswatini-hub file:line refs; re-map to `drought-map-hub/app` when executing. (In the generic hub the equivalent channel is the `appConfig` cookie + `config.js`; see [DIH-9](DIH-9_setup-wizard-theme-and-modules.md).)
 
