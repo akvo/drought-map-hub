@@ -9,15 +9,15 @@ fi
 # This function displays the usage information for the script
 # and exits the script with a non-zero status.
 usage() {
-    echo "Usage: $0 [--lst_weight=<value>] [--ndvi_weight=<value>] [--spi_weight=<value>] [--sm_weight=<value>]"
-    echo "Example: $0 --lst_weight=0.5 --ndvi_weight=0.3 --spi_weight=0.1 --sm_weight=0.1"
+    echo "Usage: $0 [--esi_weight=<value>] [--evi2_weight=<value>] [--spi_weight=<value>] [--sm_weight=<value>]"
+    echo "Example: $0 --esi_weight=0.3 --evi2_weight=0.3 --spi_weight=0.4 --sm_weight=0.0"
     exit 1
 }
 # Check if arguments are provided and validate their naming
 for arg in "$@"; do
     case $arg in
-    --lst_weight=*) ;;
-    --ndvi_weight=*) ;;
+    --esi_weight=*|--lst_weight=*) ;;    # --lst_weight: legacy alias for ESI
+    --evi2_weight=*|--ndvi_weight=*) ;;  # --ndvi_weight: legacy alias for EVI2
     --spi_weight=*) ;;
     --sm_weight=*) ;;
     *)
@@ -27,19 +27,19 @@ for arg in "$@"; do
     esac
 done
 # Initialize variables
-LST_WEIGHT=0.3
-NDVI_WEIGHT=0.3
+ESI_WEIGHT=0.3
+EVI2_WEIGHT=0.3
 SPI_WEIGHT=0.4
 SM_WEIGHT=0.0
 
 # Parse command line arguments
 for arg in "$@"; do
     case $arg in
-    --lst_weight=*)
-        LST_WEIGHT="${arg#*=}"
+    --esi_weight=*|--lst_weight=*)
+        ESI_WEIGHT="${arg#*=}"
         ;;
-    --ndvi_weight=*)
-        NDVI_WEIGHT="${arg#*=}"
+    --evi2_weight=*|--ndvi_weight=*)
+        EVI2_WEIGHT="${arg#*=}"
         ;;
     --spi_weight=*)
         SPI_WEIGHT="${arg#*=}"
@@ -54,7 +54,7 @@ for arg in "$@"; do
 done
 
 # Check if all weights are provided
-if [ -z "$LST_WEIGHT" ] || [ -z "$NDVI_WEIGHT" ] || [ -z "$SPI_WEIGHT" ] || [ -z "$SM_WEIGHT" ]; then
+if [ -z "$ESI_WEIGHT" ] || [ -z "$EVI2_WEIGHT" ] || [ -z "$SPI_WEIGHT" ] || [ -z "$SM_WEIGHT" ]; then
     usage
 fi
 # Path to the config file
@@ -67,14 +67,16 @@ if [ ! -f "$CONFIG_FILE" ]; then
 fi
 # Read the config file and update the weights
 # Use jq to update the weights in the JSON config file
-jq --arg lst "$LST_WEIGHT" \
-    --arg ndvi "$NDVI_WEIGHT" \
+jq --arg esi "$ESI_WEIGHT" \
+    --arg evi2 "$EVI2_WEIGHT" \
     --arg spi "$SPI_WEIGHT" \
     --arg sm "$SM_WEIGHT" \
-    '.cdi_parameters.weights.lst = ($lst | tonumber) | 
-     .cdi_parameters.weights.ndvi = ($ndvi | tonumber) | 
-     .cdi_parameters.weights.spi = ($spi | tonumber) | 
-     .cdi_parameters.weights.sm = ($sm | tonumber)' \
+    '.cdi_parameters.weights = {
+        esi: ($esi | tonumber),
+        evi2: ($evi2 | tonumber),
+        spi: ($spi | tonumber),
+        sm: ($sm | tonumber)
+     }' \
     "$CONFIG_FILE" | jq . --indent 4 >tmp.$$.json && mv tmp.$$.json "$CONFIG_FILE"
 # Check if the jq command was successful
 if [ $? -ne 0 ]; then
@@ -82,8 +84,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "Weights updated successfully in $CONFIG_FILE:"
-echo "LST Weight: $LST_WEIGHT"
-echo "NDVI Weight: $NDVI_WEIGHT"
+echo "ESI Weight: $ESI_WEIGHT"
+echo "EVI2 Weight: $EVI2_WEIGHT"
 echo "SPI Weight: $SPI_WEIGHT"
 echo "SM Weight: $SM_WEIGHT"
 # Print the updated config file

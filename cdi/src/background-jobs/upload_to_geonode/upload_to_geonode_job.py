@@ -61,7 +61,7 @@ def get_categories(api_url, file_name="geonode_category.json"):
             "esi-raster-map",   # was lst-raster-map
             "sm-raster-map"     # SM now has weight > 0 and is exported
         ]
-        categories = response.json().get("objects")
+        categories = response.json().get("objects") or []
         categories = list(filter(
             lambda x: x["identifier"] in selected_categories,
             categories
@@ -69,20 +69,22 @@ def get_categories(api_url, file_name="geonode_category.json"):
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data from API: {e}")
+        # Fall back to the last good cache so a transient API outage
+        # does not wipe known IDs; empty only if nothing was cached.
+        if os.path.exists(file_name):
+            with open(file_name, 'r') as json_file:
+                return json.load(json_file)
         return {}
 
     # Convert list to dictionary
     category = {c['identifier'].split('-')[0]: c['id'] for c in categories}
 
-    # Check if the file exists
-    if not os.path.exists(file_name):
-        # Write dictionary to JSON file
-        with open(file_name, 'w') as json_file:
-            json.dump(category, json_file, indent=4)
-
-    # Read and return the contents of the JSON file
-    with open(file_name, 'r') as json_file:
-        return json.load(json_file)
+    # Always refresh the cache on a successful fetch. The old "write
+    # only if missing" guard meant new categories (evi2/esi/sm) were
+    # never picked up once an older cdi+spi-only file existed on disk.
+    with open(file_name, 'w') as json_file:
+        json.dump(category, json_file, indent=4)
+    return category
 
 
 def write_failure_message(response):

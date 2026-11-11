@@ -1,19 +1,19 @@
 #!/bin/bash
 
 # --- Python environment helpers ---------------------------------------------
-# Activate a Python virtual environment if one is configured and present.
-# The path comes from the PYTHON_VENV env var (set it in .env), falling back to
-# ~/.myenv for backward compatibility. If no venv is found, the system Python is
-# used instead (with a warning) rather than the pipeline hard-failing.
+# The pipeline is meant to run inside the cdi Docker container, where its Python
+# dependencies are installed system-wide — so no virtualenv is needed or assumed.
+# Only activate one when PYTHON_VENV is *explicitly* set (for running a step on
+# the host during development). There is deliberately no host-path default: a
+# hardcoded ~/.myenv is machine-specific and unpredictable across environments.
 activate_python_env() {
-    local venv_path="${PYTHON_VENV:-$HOME/.myenv}"
-    if [ -f "${venv_path}/bin/activate" ]; then
+    local venv_path="${PYTHON_VENV:-}"
+    if [ -n "${venv_path}" ] && [ -f "${venv_path}/bin/activate" ]; then
         echo "Activating Python virtual environment: ${venv_path}"
         # shellcheck disable=SC1090
         source "${venv_path}/bin/activate"
     else
-        echo "No virtual environment found at ${venv_path}; using system Python."
-        echo "(set PYTHON_VENV in .env to point at your virtual environment)"
+        echo "Using system Python (expected inside the cdi container)."
     fi
 }
 

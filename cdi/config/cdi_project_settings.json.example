@@ -7,16 +7,17 @@
     "e_lon": 32.825
   },
   "spi_periods": [3],
+  "cdi_ranking": "pooled",
   "cdi_parameters": {
     "names": {
-      "lst": "lst_anom_pct_rank",
-      "ndvi": "ndvi_anom_pct_rank",
-      "spi": "spi_3_anom_pct_rank",
-      "sm": "RootZone2_SM_pct_rank"
+      "esi": "esi_pct_rank",
+      "evi2": "evi2_pct_rank",
+      "spi": "spi_pct_rank",
+      "sm": "sm_pct_rank"
     },
     "weights": {
-      "lst": 0.3,
-      "ndvi": 0.3,
+      "esi": 0.3,
+      "evi2": 0.3,
       "spi": 0.4,
       "sm": 0.0
     }

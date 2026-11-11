@@ -16,6 +16,17 @@ cd "$(dirname "$0")"
 # Ensure scaffolding dirs exist (container builds / prod named volumes start empty).
 mkdir -p ../../logs ../../input_data ../../output_data
 
+# Host runs (Rundeck + venv) don't get the docker bind-mount that maps
+# config/cdi_project_settings.json onto the scripts' .conf, so region/bounds/
+# weights would stay stale. Sync it here so there's one source of truth
+# regardless of how the pipeline is launched (host or container).
+client_conf="$root_path/config/cdi_project_settings.json"
+runtime_conf="$root_path/src/cdi-scripts/cdi_project_settings.conf"
+if [ -f "$client_conf" ] && ! cmp -s "$client_conf" "$runtime_conf"; then
+    cp "$client_conf" "$runtime_conf"
+    echo "Synced client config -> cdi_project_settings.conf"
+fi
+
 source ./utils.sh
 source ./job_01_check-dataset.sh
 source ./job_03_run_cdi.sh
@@ -100,5 +111,14 @@ fi
 cleanup_output_data
 
 run_cdi_scripts "$MODE"
-# upload_to_geonode
-# sync_geonode_to_portal
+
+# A failed upload (e.g. GeoNode briefly down) must not skip the portal sync:
+# whatever GeoNode already holds should still reach the hub. Record the
+# failure, run the sync, then exit non-zero so the run is still flagged.
+upload_to_geonode || upload_failed=1
+sync_geonode_to_portal
+
+if [ -n "${upload_failed:-}" ]; then
+    echo "Pipeline finished, but GeoNode upload had failures (see ../../logs/upload_failures.json)."
+    exit 1
+fi
