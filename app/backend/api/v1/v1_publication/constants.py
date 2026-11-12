@@ -46,30 +46,6 @@ class CDIGeonodeCategory:
     }
 
 
-class RasterIndicatorTypes:
-    """CDI component indices stored per publication raster.
-
-    Mirrors the component categories in ``CDIGeonodeCategory`` (minus the
-    composite ``cdi``). The vocabulary here follows the hub's current
-    pipeline (LST/NDVI/SPI); the ESI/EVI2/SM rename is a separate pipeline
-    task (CDP-0) that updates both constants together.
-    """
-
-    lst = "lst"
-    ndvi = "ndvi"
-    spi = "spi"
-
-    FieldStr = {
-        lst: "LST percentile rank",
-        ndvi: "NDVI percentile rank",
-        spi: "SPI percentile rank",
-    }
-
-    @classmethod
-    def choices(cls):
-        return list(cls.FieldStr.items())
-
-
 class DroughtCategoryColor:
     normal = 0
     d0 = 1

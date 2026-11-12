@@ -8,6 +8,8 @@ from .views import (
     ExportMapAPI,
     PublishedMapViewSet,
     PublicationDateAPI,
+    RasterListAPI,
+    RasterPushAPI,
 )
 
 urlpatterns = [
@@ -28,6 +30,16 @@ urlpatterns = [
             }
         ),
         name="review-details",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/admin/rasters",
+        RasterListAPI.as_view(),
+        name="raster-list",
+    ),
+    re_path(
+        r"^(?P<version>(v1))/rasters$",
+        RasterPushAPI.as_view(),
+        name="raster-push",
     ),
     re_path(
         r"^(?P<version>(v1))/admin/publications",

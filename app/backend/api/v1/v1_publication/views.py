@@ -26,6 +26,7 @@ from django_q.tasks import async_task
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from jsmin import jsmin
+from math import ceil
 from api.v1.v1_publication.serializers import (
     ReviewListSerializer,
     ReviewSerializer,
@@ -37,19 +38,26 @@ from api.v1.v1_publication.serializers import (
     ExportMapSerializer,
     PublishedMapSerializer,
     CompareMapSerializer,
+    RasterFilterSerializer,
+    RasterListSerializer,
+    RasterPushSerializer,
+    RasterPushResponseSerializer,
 )
 from api.v1.v1_publication.models import (
     Review,
     Publication,
+    Raster,
 )
 from api.v1.v1_publication.constants import (
     PublicationStatus,
     DroughtCategory,
     ExportMapTypes,
     DroughtCategoryColor,
+    CDIGeonodeCategory,
 )
 from api.v1.v1_jobs.models import Jobs, JobTypes, JobStatus
-from utils.custom_permissions import IsReviewer, IsAdmin
+from utils.custom_permissions import IsReviewer, IsAdmin, HasApiKey
+from utils.modules import module_enabled
 from utils.custom_pagination import Pagination
 from utils.default_serializers import (
     DefaultResponseSerializer,
@@ -192,13 +200,33 @@ class PublicationViewSet(viewsets.ModelViewSet):
                 # Save the publication
                 publication = serializer.save()
 
+                # Link the source raster asset. The relation lives on Raster
+                # (not on any GeoNode id); we still resolve it from the
+                # transitional cdi_geonode_id the create flow passes.
+                raster = None
+                if publication.cdi_geonode_id:
+                    raster = Raster.objects.filter(
+                        geonode_id=publication.cdi_geonode_id
+                    ).first()
+                    if raster and publication.raster_id != raster.pk:
+                        publication.raster = raster
+                        publication.save(update_fields=["raster"])
+
                 publication.reviews.set([
                     Review(publication=publication, user=reviewer)
                     for reviewer in reviewers
                 ], bulk=False)
 
-                if publication.cdi_geonode_id and download_url:
-                    # GeoNode path: download the raster, recompute
+                if raster and raster.values:
+                    # Platform path: the pipeline already reduced the raster to
+                    # per-administration values and pushed them, so use them
+                    # directly — no raster download / zonal stats needed.
+                    from api.v1.v1_jobs.job import notify_reviewers
+                    publication.initial_values = raster.values
+                    publication.save(update_fields=["initial_values"])
+                    notify_reviewers(publication, subject, message)
+                elif publication.cdi_geonode_id and download_url:
+                    # GeoNode fallback: download the raster, recompute
                     # initial_values via zonal stats, then notify reviewers.
                     timestamp = int(time.time())
                     filename = "raster_{0}_{1}.tif".format(
@@ -655,4 +683,201 @@ class PublicationDateAPI(APIView):
                 many=True,
             ).data,
             status=status.HTTP_200_OK
+        )
+
+
+class RasterPushAPI(APIView):
+    """Native pipeline push of a raster asset onto the platform (DIH-1).
+
+    Key-only (HasApiKey); upserts the core ``Raster`` by ``geonode_id`` with
+    the metadata and the pipeline-reduced per-administration ``values``. Core
+    and always available: it does not depend on the optional geonode module,
+    so the publication workflow gets its data without any external raster
+    store.
+    """
+
+    authentication_classes = []
+    permission_classes = [HasApiKey]
+
+    @extend_schema(
+        summary="Push a raster asset to the platform",
+        tags=["Pipeline"],
+        request=RasterPushSerializer,
+        responses={
+            200: RasterPushResponseSerializer,
+            201: RasterPushResponseSerializer,
+            403: DefaultResponseSerializer,
+        },
+    )
+    def post(self, request, version):
+        serializer = RasterPushSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+        # ponytail: keyed on geonode_id (the pipeline uploads to GeoNode first,
+        # so it always has one). A geonode-less pipeline would key on
+        # category+year_month — add that when such a pipeline exists.
+        defaults = {
+            "category": d["category"],
+            "title": d["title"],
+            "year_month": d["year_month"],
+        }
+        # Only overwrite values/resource_created when the push carries them, so
+        # a metadata-only re-push does not wipe previously pushed values.
+        if "values" in d:
+            defaults["values"] = d["values"]
+        if "resource_created" in d:
+            defaults["resource_created"] = d["resource_created"]
+        raster, created = Raster.objects.update_or_create(
+            geonode_id=d["geonode_id"], defaults=defaults,
+        )
+        http_status = (
+            status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
+        return Response(
+            {
+                "id": raster.pk,
+                "geonode_id": raster.geonode_id,
+                "synced_at": raster.synced_at,
+            },
+            status=http_status,
+        )
+
+
+class RasterListAPI(APIView):
+    """Admin publication picker, served from the platform ``Raster`` assets.
+
+    Core and always available: a pure DB read that never depends on GeoNode.
+    A raster's started publication is found via the ``Raster.publication``
+    OneToOne (``raster_id``), not any GeoNode id. URL pointers are GeoNode
+    enrichment (optional module) and are null here.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def _serialize(self, raster, pub, gnr=None):
+        return {
+            "pk": raster.pk,
+            "geonode_id": raster.geonode_id,
+            "title": raster.title,
+            "detail_url": gnr.detail_url if gnr else None,
+            "embed_url": gnr.embed_url if gnr else None,
+            "thumbnail_url": gnr.thumbnail_url if gnr else None,
+            "download_url": gnr.download_url if gnr else None,
+            "created": raster.resource_created,
+            "year_month": pub.year_month if pub else raster.year_month,
+            "publication_id": pub.pk if pub else None,
+            "status": pub.status if pub else None,
+        }
+
+    @staticmethod
+    def _geonode_pointers(raster_ids):
+        """Map raster_id -> GeoNodeResource from the optional geonode module.
+
+        Empty when the module is off, so the core listing stays independent
+        and the URL pointers simply stay null.
+        """
+        if not raster_ids or not module_enabled("geonode"):
+            return {}
+        from django.apps import apps
+        try:
+            model = apps.get_model("v1_geonode", "GeoNodeResource")
+        except LookupError:
+            return {}
+        return {
+            g.raster_id: g
+            for g in model.objects.filter(raster_id__in=raster_ids)
+        }
+
+    @extend_schema(
+        summary="List CDI raster assets for the publication picker",
+        tags=["Admin"],
+        parameters=[
+            OpenApiParameter(
+                name="page", default=1, required=False,
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="category", default=CDIGeonodeCategory.cdi,
+                required=False, enum=CDIGeonodeCategory.FieldStr.keys(),
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="status", required=False,
+                enum=PublicationStatus.FieldStr.keys(),
+                type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name="id", required=False, type=OpenApiTypes.NUMBER,
+                location=OpenApiParameter.QUERY,
+            ),
+        ],
+        responses={200: RasterListSerializer(many=True)},
+    )
+    def get(self, request, *args, **kwargs):
+        serializer = RasterFilterSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            raise ValidationError({"message": "Invalid filter parameter."})
+        data = serializer.validated_data
+
+        # Single-resource lookup by Raster id.
+        if data.get("id"):
+            raster = Raster.objects.filter(pk=data["id"]).first()
+            if not raster:
+                return Response(
+                    {"message": "Raster not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            pub = Publication.objects.filter(raster_id=raster.pk).first()
+            gnr = self._geonode_pointers([raster.pk]).get(raster.pk)
+            return Response(
+                RasterListSerializer(
+                    self._serialize(raster, pub, gnr)
+                ).data,
+                status=status.HTTP_200_OK,
+            )
+
+        # List by category (+ optional publication status filter).
+        category = data.get("category", CDIGeonodeCategory.cdi)
+        publication_status = data.get("status")
+        page = int(request.GET.get("page", "1"))
+        page_size = 10
+
+        rows = list(
+            Raster.objects.filter(category=category).order_by("-year_month")
+        )
+        pubs = {
+            p.raster_id: p
+            for p in Publication.objects.filter(
+                raster_id__in=[r.pk for r in rows]
+            )
+        }
+        if publication_status is not None:
+            rows = [
+                r for r in rows
+                if pubs.get(r.pk)
+                and pubs[r.pk].status == publication_status
+            ]
+        pointers = self._geonode_pointers([r.pk for r in rows])
+        items = [
+            self._serialize(r, pubs.get(r.pk), pointers.get(r.pk))
+            for r in rows
+        ]
+
+        total = len(items)
+        total_page = ceil(total / page_size) if total else 0
+        start = (page - 1) * page_size
+        page_items = items[start:start + page_size]
+        return Response(
+            {
+                "current": page,
+                "total": total,
+                "total_page": total_page,
+                "data": RasterListSerializer(
+                    instance=page_items, many=True
+                ).data,
+            },
+            status=status.HTTP_200_OK,
         )

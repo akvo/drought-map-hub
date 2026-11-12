@@ -95,11 +95,11 @@
       "commands": [
         {
           "description": "Update Weight",
-          "exec": "docker compose exec cdi ./change-weight.sh --lst_weight=${option.lst_weight} --ndvi_weight=${option.ndvi_weight} --spi_weight=${option.spi_weight} --sm_weight=${option.sm_weight}"
+          "exec": "docker exec cdi bash /app/src/background-jobs/change-cdi-weight.sh --lst_weight=${option.lst_weight} --ndvi_weight=${option.ndvi_weight} --spi_weight=${option.spi_weight} --sm_weight=${option.sm_weight}"
         },
         {
           "description": "CDI Automation workflow",
-          "exec": "docker compose exec cdi ./job.sh"
+          "exec": "docker exec cdi bash /app/src/background-jobs/job.sh"
         }
       ],
       "keepgoing": false,

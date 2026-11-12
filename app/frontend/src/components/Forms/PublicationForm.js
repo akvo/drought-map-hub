@@ -71,7 +71,7 @@ const PublicationForm = ({ geonode, reviewer, reviewerList = [] }) => {
     try {
       const payload = {
         ...values,
-        cdi_geonode_id: geonode?.pk,
+        cdi_geonode_id: geonode?.geonode_id,
         due_date: dayjs(values?.due_date).format("YYYY-MM-DD"),
         year_month: dayjs(values?.year_month).format("YYYY-MM-DD"),
         initial_values: [],

@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
@@ -7,6 +8,7 @@ from .models import (
     Administration,
     Publication,
     Review,
+    validate_json_values,
 )
 from utils.custom_serializer_fields import (
     CustomCharField,
@@ -21,6 +23,8 @@ from api.v1.v1_users.models import SystemUser, UserRoleTypes
 from api.v1.v1_publication.constants import (
     DroughtCategory,
     ExportMapTypes,
+    PublicationStatus,
+    CDIGeonodeCategory,
 )
 
 
@@ -399,3 +403,86 @@ class CompareMapSerializer(serializers.Serializer):
             "left_date",
             "right_date"
         ]
+
+
+class RasterFilterSerializer(serializers.Serializer):
+    category = CustomChoiceField(
+        choices=list(CDIGeonodeCategory.FieldStr.keys()),
+        required=False,
+        allow_null=True,
+    )
+    status = CustomChoiceField(
+        choices=list(PublicationStatus.FieldStr.keys()),
+        required=False,
+        allow_null=True,
+    )
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        fields = ["category", "status", "id"]
+
+
+class RasterListSerializer(serializers.Serializer):
+    """One raster-asset row for the admin publication picker. URL pointers are
+    GeoNode enrichment (optional module) and stay null when absent."""
+
+    pk = serializers.IntegerField()
+    # transitional: drives the existing (GeoNode) create flow until it is
+    # rewired to the raster id. Not the Publication<->Raster relation key.
+    geonode_id = serializers.IntegerField(allow_null=True, required=False)
+    title = serializers.CharField(allow_null=True)
+    detail_url = serializers.CharField(allow_null=True, required=False)
+    embed_url = serializers.CharField(allow_null=True, required=False)
+    thumbnail_url = serializers.CharField(allow_null=True, required=False)
+    download_url = serializers.CharField(allow_null=True, required=False)
+    created = serializers.DateTimeField(allow_null=True)
+    # ISO so the frontend's dayjs() parses unambiguously (the project's global
+    # DATE_FORMAT is DD-MM-YYYY, which dayjs misreads).
+    year_month = serializers.DateField(format="%Y-%m-%d")
+    publication_id = serializers.IntegerField(allow_null=True)
+    status = serializers.IntegerField(allow_null=True)
+
+    class Meta:
+        fields = [
+            "pk", "geonode_id", "title", "detail_url", "embed_url",
+            "thumbnail_url", "download_url", "created", "year_month",
+            "publication_id", "status",
+        ]
+
+
+class RasterPushSerializer(serializers.Serializer):
+    """Payload the CDI pipeline posts to upsert a platform Raster asset.
+
+    Unknown fields (e.g. GeoNode URL pointers the pipeline also sends to the
+    geonode push endpoint) are ignored, so the pipeline can target this
+    endpoint with the same payload. ``values`` carries the pipeline-reduced
+    per-administration results; omit it to update metadata only.
+    """
+
+    geonode_id = serializers.IntegerField(min_value=1)
+    category = serializers.ChoiceField(
+        choices=list(CDIGeonodeCategory.FieldStr.keys())
+    )
+    title = serializers.CharField(max_length=255)
+    year_month = serializers.DateField()
+    values = serializers.ListField(
+        child=serializers.DictField(), required=False, allow_null=True
+    )
+    resource_created = serializers.DateTimeField(
+        required=False, allow_null=True
+    )
+
+    def validate_values(self, value):
+        if value is None:
+            return value
+        try:
+            validate_json_values(value)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(list(e.messages))
+        return value
+
+
+class RasterPushResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    geonode_id = serializers.IntegerField()
+    synced_at = serializers.DateTimeField()
