@@ -7,6 +7,8 @@
   --foreground: #171717;
   --table-border: #e5e7eb;
   --primary-color: #3e5eb9;
+  --primary-foreground: #ffffff;
+  --primary-active: #2a4287;
   --white-color: #ffffff;
 
   .ant-typography {

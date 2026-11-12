@@ -51,6 +51,21 @@ class UserModelTestCase(TestCase):
         ).count()
         self.assertEqual(total_admin, 1)
 
+    def test_create_user_restores_soft_deleted_email(self):
+        # Re-registering a soft-deleted email restores that row instead of
+        # hitting the unique-email constraint.
+        original_id = self.user.id
+        self.user.soft_delete()
+        restored = SystemUser.objects._create_user(
+            email="test@test.org", password="New1234", name="restored"
+        )
+        self.assertEqual(restored.id, original_id)
+        self.assertIsNone(restored.deleted_at)
+        self.assertEqual(restored.name, "restored")
+        self.assertEqual(
+            SystemUser.objects.filter(email="test@test.org").count(), 1
+        )
+
     def test_create_admin_without_is_superuser(self):
         with self.assertRaises(ValueError) as context:
             SystemUser.objects.create_superuser(
