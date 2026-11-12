@@ -86,7 +86,8 @@ const AboutPage = async () => {
             </li>
             <li>
               <b>CDI Map Generation</b> – Monthly drought maps (CDI) are
-              produced indicating the drought levels per Inkundla (region).
+              produced indicating the drought levels per{" "}
+              {appConfig?.admin_label?.one || "Inkhundla"} (region).
             </li>
             <li>
               <b>Validation</b> – The Technical Working Group (TWG) reviews the
