@@ -99,6 +99,10 @@ def project(tmp_path, monkeypatch):
     config = ConfigParser()
     latitudes = config.get("latitudes")
     longitudes = config.get("longitudes")
+    # STEP_0303 names the export after the config's region_name, so read it
+    # here instead of hardcoding a client — the suite follows whatever
+    # cdi_project_settings.conf is set to (Eswatini, Namibia, ...).
+    region = config.get("region_name")
     transform = (
         Affine.translation(longitudes[0] - RESOLUTION / 2,
                            latitudes[0] + RESOLUTION / 2)
@@ -158,8 +162,8 @@ def project(tmp_path, monkeypatch):
         def read_cdi(year, month):
             """Return the exported CDI raster for one month, or None."""
             path = (tmp_path / "output_data" / "GeoTiffs" / "CDI" /
-                    "STEP_0303_CDI_pct_rank_Eswatini_{:04d}{:02d}.tif".format(
-                        year, month))
+                    "STEP_0303_CDI_pct_rank_{}_{:04d}{:02d}.tif".format(
+                        region, year, month))
             if not path.exists():
                 return None
             with rasterio.open(str(path)) as src:
