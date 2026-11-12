@@ -13,8 +13,19 @@ export default async function middleware(request) {
 
   // check if app is cofigured
   const appConfig = request.cookies.get("appConfig")?.value;
+  // Refresh a stale cookie that predates the `modules` flags, otherwise
+  // useModule reads undefined and falls back to "all on". (The cookie is
+  // still set-once per its 1-day expiry for ordinary value changes.)
+  let needsConfig = !appConfig;
+  if (appConfig) {
+    try {
+      needsConfig = !JSON.parse(appConfig)?.modules;
+    } catch {
+      needsConfig = true;
+    }
+  }
   if (
-    !appConfig &&
+    needsConfig &&
     [...publicRoutes, ...protectedRoutes, ...authRoutes].includes(pathName)
   ) {
     /// check if app is configured from the API

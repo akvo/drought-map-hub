@@ -1,10 +1,16 @@
 from django.db import models
 
+from utils.modules import module_enabled
+
+# Optional modules the setup wizard (DIH-9) exposes.
+WIZARD_MODULES = ("geonode", "weather", "iks")
+
 
 def default_modules():
-    # DIH-9: per-client optional-module flags. GeoNode on by default so an
-    # unconfigured instance keeps today's behaviour.
-    return {"geonode": True, "weather": False, "iks": False}
+    # DIH-2/DIH-9: a fresh instance mirrors the deployment's DIH_MODULES env
+    # (via module_enabled) so the wizard/frontend flags agree with the backend
+    # route gate instead of a hardcoded default. DIH_MODULES unset -> all on.
+    return {name: module_enabled(name) for name in WIZARD_MODULES}
 
 
 class SiteConfig(models.Model):

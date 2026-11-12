@@ -33,14 +33,16 @@ class DroughtCategory:
 class CDIGeonodeCategory:
     cdi = "cdi-raster-map"
     spi = "spi-raster-map"
-    ndvi = "ndvi-raster-map"
-    lst = "lst-raster-map"
+    evi2 = "evi2-raster-map"  # was ndvi-raster-map
+    esi = "esi-raster-map"    # was lst-raster-map
+    sm = "sm-raster-map"      # SM now has weight > 0 and is exported
 
     FieldStr = {
         cdi: "CDI Raster Map",
         spi: "SPI Raster Map",
-        ndvi: "NDVI Raster Map",
-        lst: "LST Raster Map",
+        evi2: "EVI2 Raster Map",
+        esi: "ESI Raster Map",
+        sm: "SM Raster Map",
     }
 
 

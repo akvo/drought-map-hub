@@ -11,6 +11,7 @@ from api.v1.v1_publication.models import (
     PublicationStatus,
 )
 from api.v1.v1_users.constants import UserRoleTypes
+from api.v1.v1_jobs.models import Jobs, JobTypes
 
 
 @override_settings(USE_TZ=False, TEST_ENV=True)
@@ -96,6 +97,57 @@ class PublicationViewSetTestCase(APITestCase):
             publication.reviews.count(),
             2
         )
+
+    @patch("django.utils.timezone.now")
+    def test_create_publication_without_geonode_id(self, mock_timezone_now):
+        mock_timezone_now.return_value = timezone.datetime(2025, 1, 31)
+        url = reverse("publication-list", kwargs={"version": "v1"})
+        data = {
+            "year_month": "2025-01-01",
+            "initial_values": [
+                {"value": 3.5, "administration_id": 1253002, "category": 4},
+            ],
+            "due_date": "2025-02-28",
+            "reviewers": [r.id for r in self.reviewers],
+            "subject": "CDI Map review requested for month 2025-01",
+            "message": (
+                "Dear {{reviewer_name}}, the {{year_month}} map is due "
+                "{{due_date}}."
+            ),
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        publication = Publication.objects.get(pk=response.json()["id"])
+        # geonode-less: no raster to fetch, so no download job, and the
+        # supplied initial_values are kept verbatim (not recomputed).
+        self.assertIsNone(publication.cdi_geonode_id)
+        self.assertFalse(
+            Jobs.objects.filter(
+                type=JobTypes.download_geonode_dataset
+            ).exists()
+        )
+        self.assertEqual(
+            publication.initial_values,
+            [{"value": 3.5, "administration_id": 1253002, "category": 4}],
+        )
+        self.assertEqual(publication.reviews.count(), 2)
+
+    @patch("django.utils.timezone.now")
+    def test_create_requires_values_without_geonode_id(
+        self, mock_timezone_now
+    ):
+        mock_timezone_now.return_value = timezone.datetime(2025, 1, 31)
+        url = reverse("publication-list", kwargs={"version": "v1"})
+        data = {
+            "year_month": "2025-01-01",
+            "initial_values": [],
+            "due_date": "2025-02-28",
+            "reviewers": [r.id for r in self.reviewers],
+            "subject": "x",
+            "message": "y",
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_publication_list(self):
         call_command("fake_publications_seeder", "--test", True)

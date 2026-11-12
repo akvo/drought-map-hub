@@ -23,6 +23,7 @@ services:
     command: ["./start.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=$DB_SCHEMA
       - DB_USER=$DB_USER
@@ -44,8 +45,12 @@ services:
       - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
-      - CSRF_TRUSTED_ORIGINS
+      - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
       - SETUP_SECRET_KEY=$SETUP_SECRET_KEY
+      - X_API_KEY=$X_API_KEY
+      # Optional-module gate (DIH-2). Unset -> all modules on; a comma list
+      # (e.g. "iks,weather") enables only those; "" turns every optional off.
+      - DIH_MODULES
     depends_on:
       - db
       - rundeck
@@ -68,6 +73,7 @@ services:
     command: ["./run_worker.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=$DB_SCHEMA
       - DB_USER=$DB_USER
@@ -88,7 +94,9 @@ services:
       - EMAIL_HOST_PASSWORD=$EMAIL_HOST_PASSWORD
       - EMAIL_FROM=$EMAIL_FROM
       - WEBDOMAIN=$WEBDOMAIN
-      - CSRF_TRUSTED_ORIGINS
+      - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
+      - X_API_KEY=$X_API_KEY
+      - DIH_MODULES
     depends_on:
       - backend
       - rundeck

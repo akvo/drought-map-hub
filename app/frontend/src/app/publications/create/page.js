@@ -12,7 +12,7 @@ const PublicationForm = dynamic(
 const CreatePublicationPage = async ({ searchParams }) => {
   const geonode = await api(
     "GET",
-    `/admin/cdi-geonode?id=${searchParams?.cdi_geonode_id}`,
+    `/admin/rasters?id=${searchParams?.raster_id}`,
   );
   const { data: reviewerList = [], ...reviewer } = await api(
     "GET",
