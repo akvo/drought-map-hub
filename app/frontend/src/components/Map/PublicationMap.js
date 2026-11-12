@@ -23,6 +23,7 @@ import {
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
 import { useModule } from "@/lib/useModule";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 import { useCallback, useMemo, useState } from "react";
 import { ClockIcon, VerifiedIcon } from "../Icons";
 import classNames from "classnames";
@@ -65,6 +66,7 @@ const PublicationMap = ({
   const [number_reviews] = publication?.progress_reviews?.split("/");
   const router = useRouter();
   const geonodeOn = useModule("geonode");
+  const adminLabel = useAdminLabel();
   const [modal, contextHolder] = Modal.useModal();
 
   const openReviewProgress = useCallback(() => {
@@ -240,7 +242,7 @@ const PublicationMap = ({
       <Flex align="center" justify="space-between">
         <div className="w-10/12 py-2">
           <Title level={2}>
-            {`Inkundla CDI Publication for: ${dayjs(
+            {`${adminLabel.one} CDI Publication for: ${dayjs(
               publication?.year_month,
               "YYYY-MM",
             ).format("MMMM YYYY")}`}

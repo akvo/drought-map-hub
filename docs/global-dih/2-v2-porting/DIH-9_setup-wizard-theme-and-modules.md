@@ -111,6 +111,8 @@ No new endpoint. `PUT /manage-setup/{uuid}` picks up the same fields for later e
 
 **Verify (goal-driven):** a test POSTs `/setup` with `primary_color="#C0392B"` + `modules={"geonode":false,"weather":true,"iks":false}`, asserts `SiteConfig` persists both and `GET /setup` returns them; run the migration forward and backward.
 
+> **Implemented alongside DIH-6 (#24):** the admin-unit label reuses this exact seam — `SiteConfig.admin_label` (JSONField, `default_admin_label()` → `{"one":"Inkhundla","many":"Tinkhundla"}`), carried on `SetupSerializer`/`SetupResponseSerializer` (JSON-parsed with `modules`), captured in Step 1, and delivered through the Step 5 cookie refresh. Step 5 is now done: `src/middleware.js` **drops the `appConfig` cookie on any `/setup` route** (and prefix-matches known routes so dynamic detail pages also refresh a stale cookie).
+
 ## User acceptance criteria
 
 - As an **operator**, during first-run setup I pick a brand colour and toggle GeoNode / weather / IKS, and the running app reflects those choices — no file editing needed for the colour and module selection.

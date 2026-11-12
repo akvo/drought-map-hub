@@ -5,7 +5,7 @@
 **Task ID**: DIH-6
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-30
-**Status**: Draft
+**Status**: Phase 6a done (#24); Phase 6b N/A in this repo (see below)
 **Effort**: ~11h total (incl. agentic coding) → 2 phases ≤8h each (see Phases): 7a ~7h, 7b ~4h.
 **Depends on**: [DIH-4](DIH-4_country-pack.md) (provides `country.admin_label`), [DIH-3](DIH-3_module-flags-frontend.md) (delivers it to the app)
 
@@ -23,23 +23,25 @@
 
 ## 3. Approach + files
 
-- Source: `country.admin_label.{one,many}` in `country.json` (DIH-4), delivered via `config.js`/`appConfig` (DIH-3).
-- Frontend: a `useAdminLabel()` hook; backend: `settings.COUNTRY["admin_label"]`.
+> **As built (#24):** delivery is via **`SiteConfig.admin_label`** (a JSONField `{one, many}`), not `country.json`/`config.js`. The wizard (DIH-9 Step 1) captures it, `SetupResponseSerializer` rides it on the `appConfig` cookie, and the frontend reads it with `useAdminLabel()` / `getAppConfig().admin_label` (both falling back to the Eswatini default). This is the agreed "wizard over country.json" approach; `country.json` (DIH-4) keeps zones / region colours / agencies. The original plan below is kept for context.
+
+- Source: `country.admin_label.{one,many}` in `country.json` (DIH-4), delivered via `config.js`/`appConfig` (DIH-3). **(Superseded: now `SiteConfig.admin_label` + wizard, above.)**
+- Frontend: a `useAdminLabel()` hook; backend: ~~`settings.COUNTRY["admin_label"]`~~ `SiteConfig.admin_label`.
 - Replace user-facing literals, e.g. `ValidationTable.js:42,134,149` ("Inkhundla", "Tinkhundla", "Search Inkhundla") and copy in `static/config/review.js:46,51`, `static/config/activity.js:22`.
 
 ## 4. Decisions (MC-1 Decision Log)
 
-- **D-4**: admin label lives in `country.json`, delivered via `config.js`; replace only user-visible strings, not identifiers.
+- **D-4**: ~~admin label lives in `country.json`, delivered via `config.js`~~; **as built (#24): admin label lives in `SiteConfig.admin_label`, set in the setup wizard and delivered on the `appConfig` cookie.** Still: replace only user-visible strings, not identifiers.
 
 ## Implementation steps
 
-**Phase 6a — UI copy:**
-1. Deliver `country.admin_label.{one,many}` via `appConfig` (from `country.json`, DIH-4). → verify: the cookie carries `admin_label`.
-2. `useAdminLabel()` hook. → verify: a component renders the configured word via the hook.
-3. Replace user-visible literals (e.g. `ValidationTable.js:42,134,149`, `static/config/review.js:46,51`, `activity.js:22`). → verify: CI leak grep finds no `Inkhundla/Tinkhundla` in user-visible frontend strings (allow-list: `source/`, tests).
+**Phase 6a — UI copy — DONE (#24):**
+1. ~~Deliver `country.admin_label` via `appConfig` (from `country.json`).~~ **Done differently:** `SiteConfig.admin_label` JSONField (migration `0003`) → `SetupResponseSerializer`/`SetupSerializer` → `appConfig` cookie; wizard Step 1 captures it. → verified: the cookie carries `admin_label`.
+2. `useAdminLabel()` hook (+ `getAppConfig().admin_label` for server components), both with the Eswatini fallback. → verified by `useAdminLabel.test.js`.
+3. Replaced user-visible literals across validation / review / publication surfaces + setup Step 1. → verified: leak grep finds no `Inkhundla/Tinkhundla` in user-visible frontend strings.
 
-**Phase 6b — email + PDF:**
-4. `settings.COUNTRY["admin_label"]` in email templates + the PDF brief. → verify: rendered email + PDF use the configured word; leak grep clean on templates.
+**Phase 6b — email + PDF — N/A in this repo:**
+4. No email HTML templates and no PDF brief generator exist in `app/backend` yet (they arrive with the DIH-10 v2 UI port). Leak grep is already clean on templates. Revisit when those surfaces land; use `SiteConfig.admin_label` (not `settings.COUNTRY`) as the source then.
 
 ## User acceptance criteria
 
@@ -55,10 +57,10 @@
 
 ## Phases (≤8h each)
 
-| Phase | Effort | Scope | Technical acceptance |
+| Phase | Effort | Scope | Status |
 |---|---|---|---|
-| **7a** UI copy | ~7h | Replace user-visible "Inkhundla/Tinkhundla" in frontend components + `static/config/*` via `useAdminLabel()` | A component renders the configured label; CI leak grep finds no admin-noun literal in frontend user-visible strings |
-| **7b** email + PDF | ~4h | Replace the admin noun in email templates + the PDF brief via `settings.COUNTRY["admin_label"]` | Rendered email + PDF use the configured label; leak grep clean on templates |
+| **7a** UI copy | ~7h | Replace user-visible "Inkhundla/Tinkhundla" in frontend components via `useAdminLabel()` (source: `SiteConfig.admin_label` + wizard) | ✅ Done (#24) — label renders from config; leak grep clean on user-visible frontend strings |
+| **7b** email + PDF | ~4h | Replace the admin noun in email templates + the PDF brief via `SiteConfig.admin_label` | ⏸ N/A here — no email/PDF surfaces in `app/backend` yet; lands with DIH-10 |
 
 ## 6. Dependencies / hand-offs
 

@@ -48,6 +48,7 @@ class SetupSerializer(serializers.ModelSerializer):
             'map_name_key',
             'theme',
             'modules',
+            'admin_label',
             'organizations',
             'created_at',
             'updated_at'
@@ -119,14 +120,15 @@ class SetupSerializer(serializers.ModelSerializer):
                 # Create a mutable copy of data
                 data_dict = dict(data.items())
                 data_dict['organizations'] = organizations_data
-                # modules arrives as a JSON string over multipart.
-                if isinstance(data_dict.get('modules'), str):
-                    try:
-                        data_dict['modules'] = json.loads(
-                            data_dict['modules']
-                        )
-                    except (ValueError, TypeError):
-                        pass
+                # modules / admin_label arrive as JSON strings over multipart.
+                for json_field in ('modules', 'admin_label'):
+                    if isinstance(data_dict.get(json_field), str):
+                        try:
+                            data_dict[json_field] = json.loads(
+                                data_dict[json_field]
+                            )
+                        except (ValueError, TypeError):
+                            pass
                 return super().to_internal_value(data_dict)
         return super().to_internal_value(data)
 
@@ -234,6 +236,7 @@ class SetupResponseSerializer(serializers.ModelSerializer):
             'map_center',
             'theme',
             'modules',
+            'admin_label',
             'created_at',
             'updated_at',
             'is_configured',

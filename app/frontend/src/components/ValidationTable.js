@@ -19,6 +19,7 @@ import {
 } from "antd";
 import classNames from "classnames";
 import { useMemo, useState } from "react";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 
 const { Search } = Input;
 const { Text } = Typography;
@@ -35,11 +36,12 @@ const ValidationTable = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [updating, setUpdating] = useState(false);
   const [search, setSearch] = useState(null);
+  const adminLabel = useAdminLabel();
 
   const columns = useMemo(() => {
     return [
       {
-        title: "Inkhundla",
+        title: adminLabel.one,
         dataIndex: "name",
         defaultSortOrder: "ascend",
         sorter: (a, b) => {
@@ -99,7 +101,7 @@ const ValidationTable = ({
         width: 35,
       },
     ];
-  }, [extraColumns, onSelectValue, onDetails]);
+  }, [extraColumns, onSelectValue, onDetails, adminLabel.one]);
 
   const handleNonDisputed = async (e) => {
     setUpdating(true);
@@ -131,8 +133,10 @@ const ValidationTable = ({
       content: (
         <div>
           <Text>
-            <strong>{selectedRowKeys.length} Tinkhundla</strong> will copy
-            non-disputed values.
+            <strong>
+              {selectedRowKeys.length} {adminLabel.many}
+            </strong>{" "}
+            will copy non-disputed values.
           </Text>
           <Text>Are you sure?</Text>
         </div>
@@ -146,7 +150,7 @@ const ValidationTable = ({
       <Flex align="center" justify="space-between">
         <Space>
           <Search
-            placeholder="Search Inkhundla"
+            placeholder={`Search ${adminLabel.one}`}
             onSearch={setSearch}
             onClear={() => setSearch(null)}
             allowClear
