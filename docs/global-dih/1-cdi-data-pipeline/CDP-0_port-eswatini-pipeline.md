@@ -127,28 +127,30 @@ The geonode publication-push endpoint has **no app of its own** in the eswatini 
 
 **How the CDI side reaches the hub (config, not status-probing):** the ported pipeline step `job_05_sync_to_portal.sh` POSTs to this app **only when** `DROUGHTMAP_HUB_URL` + `DROUGHTMAP_HUB_API_KEY` are set in `cdi/.env`; unset → it skips silently. The pipeline never probes the hub or branches on an HTTP status to decide whether the module exists — the enable/disable signal is configuration, and auth is the API key.
 
+> **E2 — superseded by the core-`Raster` split.** The cache design in the table above (`PublicationGeonode` + `PublicationRaster`, read via `CDIGeonodeAPI`) was replaced mid-E2 by a platform-independent core **`Raster`** asset in `v1_publication` (native push `POST /api/v1/rasters`, listing `GET /admin/rasters`) and a thin **`GeoNodeResource`** pointer in `v1_geonode` (push `POST /api/v1/geonode/publications`, which ensures the `Raster` then upserts the pointer). The pipeline now pushes to `/api/v1/rasters` (authoritative, module-independent) **then** best-effort `/api/v1/geonode/publications` (a `404` = module off, tolerated). `GeonodeRasterPushAPI`, the `admin/cdi-geonode` route and the `sync_publication_geonodes` backfill were dropped. See [DIH-1 §11](../2-v2-porting/DIH-1_v1-geonode-optional-app.md#11-what-shipped-e2) for the shipped state.
+
 ---
 
 ## 4. API Contract
 
 | Method | URL | Change |
 |---|---|---|
-| GET | `/api/v1/admin/settings` (existing `SettingsViewSet`) | Fields `lst_weight`/`ndvi_weight` are replaced by `esi_weight`/`evi2_weight` |
+| GET | `/api/v1/admin/settings` (existing `SettingsViewSet`) | Weight fields planned to become `esi_weight`/`evi2_weight` — **deferred in E2**: the DB/serializer/Rundeck-option names stay `lst_weight`/`ndvi_weight` (the UI labels show ESI/EVI2). A full rename needs a migration + Rundeck job re-create (see D-1). |
 | PUT | `/api/v1/admin/setting/{pk}` | same |
 
 ```json
-// PUT /api/v1/admin/setting/1
-{ "esi_weight": 0.3, "evi2_weight": 0.3, "spi_weight": 0.3, "sm_weight": 0.1 }
+// PUT /api/v1/admin/setting/1  (field names unchanged in E2)
+{ "lst_weight": 0.3, "ndvi_weight": 0.3, "spi_weight": 0.3, "sm_weight": 0.1 }
 // 400 if the sum differs from 1.0 by more than 1e-6
 ```
 
-Rundeck job (exec steps):
+Rundeck job (exec steps — run **inside** the `cdi` container; `change-cdi-weight.sh` accepts the legacy `--lst/--ndvi` aliases → esi/evi2):
 
 ```
-docker compose exec cdi ./src/background-jobs/change-cdi-weight.sh \
-  --esi_weight=${option.esi_weight} --evi2_weight=${option.evi2_weight} \
+docker exec cdi bash /app/src/background-jobs/change-cdi-weight.sh \
+  --lst_weight=${option.lst_weight} --ndvi_weight=${option.ndvi_weight} \
   --spi_weight=${option.spi_weight} --sm_weight=${option.sm_weight}
-docker compose exec cdi ./src/background-jobs/job.sh recent
+docker exec cdi bash /app/src/background-jobs/job.sh
 ```
 
 ---
@@ -202,7 +204,7 @@ Keeping it means maintaining two pipelines to postpone a gap that CDP-1 → CDP-
 - A dedicated app keeps GeoNode concerns isolated and **optional** (`DIH_MODULES`), so a future deployment can disable or replace GeoNode without touching `v1_publication`. This fits MC-1's pluggable-module model.
 - The pipeline push is **env-gated**: `job_05_sync_to_portal.sh` skips silently when `DROUGHTMAP_HUB_URL`/`_API_KEY` are unset, so Eswatini and other deployments are unaffected until the endpoint is wired. The decision is config-driven, not an HTTP-status fallback.
 
-**Impact**: a new `v1_geonode` app (urls/views/serializers + the `PublicationGeonode` cache model/migration + the `sync_publication_geonodes` backfill command) is added and gated by `DIH_MODULES`; the read path moves from live-pull to cache-backed. The ported sync step moves from "off" to active once the endpoint and `DROUGHTMAP_HUB_URL`/`_API_KEY` are configured.
+**Impact**: a new `v1_geonode` app gated by `DIH_MODULES` is added, and the ported sync step moves from "off" to active once the endpoint and `DROUGHTMAP_HUB_URL`/`_API_KEY` are configured. *(E2: the originally-planned `PublicationGeonode` cache + `sync_publication_geonodes` backfill were superseded — the GeoNode-independent read path is the core `Raster.values`, and `v1_geonode` holds only a `GeoNodeResource` pointer. See §3 note and [DIH-1 §11](../2-v2-porting/DIH-1_v1-geonode-optional-app.md#11-what-shipped-e2).)*
 
 ---
 

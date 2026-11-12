@@ -40,7 +40,7 @@ Today the plan assumes **D-1: one instance per country** — one app, one Postgr
   | `Jobs` | `tenant` (direct) | no `user` FK to derive from — verified |
   | `Review` | `publication__tenant` | |
   | `AdminDatasetValue` (DIH-7) | `administration__tenant` | model new in DIH-7 |
-  | GeoNode link | `Publication.tenant` + category prefix | **no `PublicationGeonode` model in this repo** — link is `Publication.cdi_geonode_id` + the live `CDIGeonodeAPI` |
+  | GeoNode link | `Publication.tenant` / `Raster.tenant` + category prefix | DIH-1 shipped a core `Raster` (geonode_id) + `Publication.raster`; link via `Publication.cdi_geonode_id`→`Raster`; MT-8 adds `Raster.tenant` |
 
 - `SystemUser` already carries an `organization` FK (`SET_NULL`); `Tenant` sits **above** `Organization` (one tenant → many orgs/TWG). The user keeps `organization` and **gains** `tenant`.
 - **Read isolation**: explicit `for_user(user)` manager method (authenticated) and `for_tenant(request.tenant)` (public/unauthenticated: browse/compare/iframe) + per-model `TENANT_PATH` (MIS rejected middleware+thread-locals — greppable/testable wins). Every tenant-owned query routes through one of them.
@@ -85,7 +85,7 @@ flowchart LR
 | Doc | Change |
 |---|---|
 | **HANDOFF / WS-2 README** | Reframe D-1 ("standalone *or* multi-tenant"); add WS-3; update the order-of-work |
-| **DIH-1** (v1_geonode) | push gains tenant attribution via `Publication.tenant` (and the `PublicationGeonode` cache FK, if DIH-1 ports that model) (→ MT-8 extends it) |
+| **DIH-1** (v1_geonode) | push gains tenant attribution via `Publication.tenant`; MT-8 adds `Raster.tenant` on the shipped core `Raster` (→ MT-8 extends it) |
 | **DIH-2** (modules) | `DIH_MODULES` per-instance → `Tenant.features` per-tenant; `module_enabled()` reads `request.tenant.features` |
 | **DIH-4** (country pack) | **Rewritten** — `COUNTRY_DIR` is **removed entirely** (no env path picks the country; the tenant does). Country content is per-tenant: `SiteConfig` row per tenant + the boundary/zones uploaded during onboarding and stored per tenant (`STORAGE_PATH/tenants/<subdomain>/`, resolved from `request.tenant`); frontend config host-keyed, not a single baked `config.min.js` |
 | **DIH-9** (setup wizard) | Becomes per-tenant onboarding (→ MT-6) |

@@ -28,7 +28,7 @@ Every row in the hub today is global to the instance. To serve many countries fr
   | `Jobs` | `tenant` | **direct FK** — no `user` FK exists to derive from; scope by tenant (add a `created_by` FK later only if per-user ownership is ever needed) |
   | `Review` | `publication__tenant` | derives |
   | `AdminDatasetValue` (DIH-7) | `administration__tenant` | derives; model is new in DIH-7 |
-  | GeoNode link | `Publication.tenant` | **no `PublicationGeonode` model in this repo** — the link is `Publication.cdi_geonode_id` + the live `CDIGeonodeAPI`; attribution rides `Publication.tenant` (if DIH-1 later ports a `PublicationGeonode` cache model, it derives `publication__tenant`) |
+  | GeoNode link | `Publication.tenant` / `Raster.tenant` | DIH-1 **shipped** a core `Raster` (geonode_id unique) + `Publication.raster` OneToOne (not the `PublicationGeonode` cache — superseded). Attribution rides `Publication.tenant`; MT-8 adds `Raster.tenant` for pipeline-pushed rasters not yet tied to a publication. The optional `GeoNodeResource` pointer derives `raster__tenant`. |
 
 - Each model declares `TENANT_PATH` (a class attribute) so MT-2's `for_user()`/`for_tenant()` can resolve it; a model without `TENANT_PATH` is intentionally global.
 - **Existing `Organization` primitive**: `SystemUser` already has an `organization` FK (`SET_NULL`), and `Organization` holds the TWG/collaborator agencies. `Tenant` sits **above** `Organization` (one tenant → many organizations); `SystemUser` keeps `organization` and **gains** `tenant`. No conflict — `Organization` is one of the direct-FK roots.

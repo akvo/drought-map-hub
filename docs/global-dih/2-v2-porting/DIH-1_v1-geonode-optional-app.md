@@ -11,7 +11,7 @@
 
 ---
 
-> **Multi-tenancy (WS-3):** under the multi-tenant target, `PublicationGeonode` gains a `tenant` FK and the push is attributed per tenant (GeoNode category prefix + service identity / API key). Extended by [MT-8](../3-multi-tenancy/MT-8_geonode-tenant-attribution.md); `geonode_id` stays globally unique. Standalone deploy = the `default` tenant, unchanged.
+> **Multi-tenancy (WS-3):** under the multi-tenant target, the core `Raster` gains a `tenant` FK and the push is attributed per tenant (GeoNode category prefix + service identity / API key). Extended by [MT-8](../3-multi-tenancy/MT-8_geonode-tenant-attribution.md); `geonode_id` stays globally unique. Standalone deploy = the `default` tenant, unchanged.
 
 ## 1. Context
 
@@ -131,22 +131,34 @@ This task was **specified in CDP-0 but built in E2** (this branch). Despite CDP-
 
 GeoNode on/off is a **provision-time, set-once** decision (geonode is core-in-practice), which right-sizes these. Resolved items are recorded for context.
 
-- **OQ-1 — pre-computed values at publication create (RESOLVED in E2).** `cdi_geonode_id` is now `null=True` and `CreatePublicationSerializer.download_url` is optional. `perform_create` branches: with a `cdi_geonode_id` + `download_url` it keeps the old GeoNode download→recompute→notify chain; without them it trusts the `initial_values` supplied in the request and notifies reviewers directly (the shared `notify_reviewers` helper, extracted from `generate_initial_cdi_values_results`). `validate()` requires `initial_values` when `cdi_geonode_id` is absent. A publication can now be created with no GeoNode at all; the values come from the request, not a post-create `PublicationRaster`. (Covered by `test_create_publication_without_geonode_id` + `test_create_requires_values_without_geonode_id`.)
+- **OQ-1 — pre-computed values at publication create (RESOLVED in E2).** `cdi_geonode_id` is now `null=True` and `CreatePublicationSerializer.download_url` is optional. `perform_create` branches: with a `cdi_geonode_id` + `download_url` it keeps the old GeoNode download→recompute→notify chain; without them it trusts the `initial_values` supplied in the request and notifies reviewers directly (the shared `notify_reviewers` helper, extracted from `generate_initial_cdi_values_results`). `validate()` requires `initial_values` when `cdi_geonode_id` is absent. A publication can now be created with no GeoNode at all; the values come from the request (or, in the final design, from the core `Raster.values` the pipeline pushes to `/api/v1/rasters` — §11), not a GeoNode download. (Covered by `test_create_publication_without_geonode_id` + `test_create_requires_values_without_geonode_id`.)
 - **OQ-2 — seeders assume GeoNode (low priority).** `publications_seeder` and `fake_*_seeder` hit `GEONODE_BASE_URL`. Make the `fake_*` seeders self-contained (synthetic data, no GeoNode) and guard the real `publications_seeder` behind `module_enabled("geonode")`. Dev tooling; fix when it bites.
-- **Resolved E2:** backend route gate is env/startup by nature (urlconf builds once), so `DIH_MODULES` is the authoritative backend knob; `default_modules()` now derives `SiteConfig.modules` from `module_enabled()` so the wizard/frontend match it (set once at provisioning via `DIH_MODULES`). `PublicationRaster` is the GeoNode-**down** fallback (module ON), not a geonode-off mode — so sharing the geonode gate is correct (documented on the model).
+- **Resolved E2:** backend route gate is env/startup by nature (urlconf builds once), so `DIH_MODULES` is the authoritative backend knob; `default_modules()` now derives `SiteConfig.modules` from `module_enabled()` so the wizard/frontend match it (set once at provisioning via `DIH_MODULES`). The GeoNode-independent read path is the core `Raster.values` (populated by `/api/v1/rasters`, module-independent), so a hub read never depends on GeoNode being up — this superseded the separate `PublicationRaster` fallback (§11).
 
 ## 11. What shipped (E2)
 
-Backend (`app/backend/api/v1/v1_geonode/`, new app):
-- Models `PublicationGeonode` (metadata cache, `geonode_id` unique, `save()` normalises `year_month`) + `PublicationRaster` (GeoNode-**down** fallback values, FK→`Publication`).
-- `HasApiKey` (in `utils/custom_permissions.py`; `settings.X_API_KEY` + `X_API_KEY_HEADER`). Push views `GeonodePublicationPushAPI` + `GeonodeRasterPushAPI`; cache-backed read `CDIGeonodeAPI` (relocated from `v1_publication`, route `admin/cdi-geonode` kept). Backfill command `sync_publication_geonodes`.
-- URL include gated by `module_enabled("geonode")` → off = 404.
-- **OQ-1 done:** `cdi_geonode_id` optional + geonode-less create path (§10).
-- **Category rename landed** (was deferred): `cdi/spi/evi2/esi/sm` across the pipeline (`upload_to_geonode_job.py`, `sync_geonode_publications_job.py`), the GeoNode seeder (`geonode/src/cdi/.../add_cdi_categories.py`), and the hub `CDIGeonodeCategory`. `RasterIndicatorTypes` (`PublicationRaster.indicator_type`) still carries `lst/ndvi/spi` — not exercised by the sync; renaming it needs a migration, left for when a raster push needs it.
-- **Migrations squashed** (pre-deploy): `v1_publication` and `v1_geonode` each collapsed to a single `0001_initial`.
+> The plan sections above (§2, §4–§5) describe the first-cut design — a GeoNode **metadata cache** (`PublicationGeonode`) plus a separate `PublicationRaster` fallback, read via `CDIGeonodeAPI` at `admin/cdi-geonode`. Mid-E2 that was **superseded** by a cleaner split: a platform-independent core **`Raster`** asset in `v1_publication`, and a thin **`GeoNodeResource`** pointer in the optional `v1_geonode`. The list below is the shipped state.
 
-Storage (§3): `STORAGE_PATH` → `MEDIA_ROOT` + `v1_jobs/job.py tmp_dir`; `:delegated` volume on `backend`+`worker`; `app/storage/.gitignore`.
+**Backend — core asset (`v1_publication`):**
+- **`Raster`** is the platform-independent publication asset: `geonode_id` (nullable, unique), `category`, `title`, `year_month` (normalised to day 1), `values` (JSON, optional), `resource_created`, `synced_at`. `Publication.raster` is a OneToOne to it.
+- **Native push `POST /api/v1/rasters`** (`RasterPushAPI`, `HasApiKey`) upserts a `Raster` by `geonode_id`; it writes `values`/`resource_created` only when the payload carries them (a metadata re-push never wipes values). **Core — present whether or not the `geonode` module is on.**
+- **Listing `GET /admin/rasters`** (`RasterListAPI`) serves the core rasters (replaces the old `admin/cdi-geonode`); it enriches each row with GeoNode detail/embed/thumbnail/download URLs **only when `geonode` is on** (lazy `apps.get_model("v1_geonode", "GeoNodeResource")`).
+- **Create flow** (`perform_create`): links `Publication.raster` from `cdi_geonode_id`; if the `Raster` already has `values` it uses them and notifies reviewers (no download), else it falls back to the GeoNode download→recompute chain (OQ-1).
 
-Frontend (DIH-3): `useModule()` gates the publications page, filters, and the "Open in Geonode" map item. **Plumbing fix:** the client context never carried `modules` off the setup flow, so `useModule` always fell back to "all on" — `AppContextProvider` now seeds `appConfig` from the server cookie (`layout.js` passes it) and `middleware.js` refreshes a cookie that predates the `modules` flag. See [DIH-3](DIH-3_module-flags-frontend.md).
+**Backend — optional pointer app (`v1_geonode`):**
+- One model **`GeoNodeResource`** (OneToOne→`Raster`): `detail_url`/`embed_url`/`thumbnail_url`/`download_url`, `file_size`, `raw`, `synced_at`. Replaces **both** `PublicationGeonode` and `PublicationRaster`.
+- Push **`POST /api/v1/geonode/publications`** (`GeonodePublicationPushAPI`, `HasApiKey`) ensures the core `Raster` (`get_or_create`) then upserts its `GeoNodeResource` pointer. URL include gated by `module_enabled("geonode")` → off = 404.
+- **Removed** vs the first cut: `PublicationGeonode`, `PublicationRaster`, `GeonodeRasterPushAPI`, `CDIGeonodeAPI` (+ the `admin/cdi-geonode` route), the `sync_publication_geonodes` backfill command, and `RasterIndicatorTypes`.
+- `HasApiKey` unchanged (in `utils/custom_permissions.py`; `settings.X_API_KEY` + `X_API_KEY_HEADER`).
 
-Provisioning (`configure.sh`): aligned with current consumers — `DB_SCHEMA=dmh_app`, `STORAGE_PATH`, `X_API_KEY` (matched to the pipeline's `DROUGHTMAP_HUB_API_KEY`), the NDMC download scheme, the current `cdi_project_settings.json` schema, and `create-envfile.py --hostname` so GeoNode's `server_name`/`ALLOWED_HOSTS` match the chosen domain.
+**Pipeline (cdi) — see [CDP-0](../1-cdi-data-pipeline/CDP-0_port-eswatini-pipeline.md) §3:** the portal-sync step pushes each resource to **`/api/v1/rasters`** (authoritative) then best-effort **`/api/v1/geonode/publications`** (a `404` = `geonode` module off, tolerated). It runs **inside the `cdi` container** (Rundeck `docker exec cdi bash /app/src/background-jobs/job.sh`); `ENABLE_GEONODE_UPLOAD` gates the expensive GeoNode upload step.
+
+**Category rename landed:** `cdi/spi/evi2/esi/sm` across the pipeline (`upload_to_geonode_job.py`, `sync_geonode_publications_job.py`), the GeoNode seeder (`add_cdi_categories.py`), the hub `CDIGeonodeCategory`, and the frontend category filter (`evi2/esi-raster-map`). The weight **field names** stay `lst_weight`/`ndvi_weight` (backend `v1_rundeck` model/serializer/views + API contract; the UI labels show ESI/EVI2) — a full identifier rename needs a migration + Rundeck job re-create, deferred.
+
+**Migrations squashed** (pre-deploy): `v1_publication` and `v1_geonode` each collapsed to a single `0001_initial` on this branch.
+
+**Storage (§3):** `STORAGE_PATH` → `MEDIA_ROOT` + `v1_jobs/job.py tmp_dir`; `:delegated` volume on `backend`+`worker`; `app/storage/.gitignore`.
+
+**Frontend (DIH-3):** `/admin/rasters` is the data source (was `/admin/cdi-geonode`); `useModule()` gates the publications filters and the "Open in Geonode" map item; the category filter uses `evi2/esi-raster-map`. **Plumbing fix:** the client context never carried `modules` off the setup flow, so `useModule` always fell back to "all on" — `AppContextProvider` now seeds `appConfig` from the server cookie (`layout.js` passes it) and `middleware.js` refreshes a cookie that predates the `modules` flag. See [DIH-3](DIH-3_module-flags-frontend.md).
+
+**Provisioning (`configure.sh`):** aligned with current consumers — `DB_SCHEMA=dmh_app`, `STORAGE_PATH`, `X_API_KEY` (matched to the pipeline's `DROUGHTMAP_HUB_API_KEY`), the NDMC download scheme, the current `cdi_project_settings.json` schema, and `create-envfile.py --hostname` so GeoNode's `server_name`/`ALLOWED_HOSTS` match the chosen domain.

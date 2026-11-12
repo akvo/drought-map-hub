@@ -19,7 +19,7 @@ All tenants share one GeoNode. Rasters coexist because `geonode_id` is globally 
 
 ## 2. Approach + files
 
-- **Attribution anchor**: this repo has **no `PublicationGeonode` cache model** — the GeoNode link is `Publication.cdi_geonode_id` (int, globally unique) + the live `CDIGeonodeAPI`. `Publication` is already a tenant root (MT-1), so attribution rides **`Publication.tenant`**. (If DIH-1 later ports a `PublicationGeonode` cache model from Eswatini, it derives `publication__tenant` — same anchor.)
+- **Attribution anchor**: DIH-1 **shipped** a core **`Raster`** asset (`geonode_id`, globally unique) + `Publication.raster` OneToOne — not the `PublicationGeonode` cache (superseded). `Publication` is already a tenant root (MT-1), so attribution rides **`Publication.tenant`**; MT-8 adds **`Raster.tenant`** so a pipeline-pushed raster (via `POST /api/v1/rasters`) is attributed before/without a publication. The optional `GeoNodeResource` pointer derives `raster__tenant` — same anchor.
 - **Category prefix per tenant**: the pipeline uploads to `cdi-raster-map-<subdomain>` (etc.); the hub's `CDIGeonodeAPI` fetch/list filters by the tenant's category prefix **and** `for_user/for_tenant` on `Publication.tenant`. ⚠️ Verify GeoNode's "category" is free-form enough to prefix per tenant; if it is a fixed ISO vocabulary, use a per-tenant **keyword** or layer-name prefix instead.
 - **Push attribution**: `v1_geonode` POST endpoints stamp the tenant on the created/updated `Publication` from the **push identity** —
   - **central pipeline** → an internal service identity + a `tenant` (subdomain) in the payload, validated against an existing `Tenant`;
