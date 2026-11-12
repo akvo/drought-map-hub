@@ -2,9 +2,19 @@
 
 Runs after the GeoTiffs are uploaded to GeoNode: reads back the raster
 resources GeoNode now holds and pushes their metadata to every configured
-hub's POST /api/v1/geonode/publications endpoint, which upserts by
-geonode_id. Several hubs (staging, production) can read the same GeoNode, so
-both env vars accept a comma-separated list.
+hub, which upserts by geonode_id. Each resource is pushed to two hub
+endpoints:
+
+  - POST /api/v1/rasters            -> the core Raster asset (authoritative;
+                                       present on every hub, geonode module or
+                                       not). Its result decides success.
+  - POST /api/v1/geonode/publications -> the optional GeoNode metadata cache.
+                                       Best-effort: a 404 means the hub runs
+                                       with the geonode module off, which is
+                                       expected, not a failure.
+
+Several hubs (staging, production) can read the same GeoNode, so both env
+vars accept a comma-separated list.
 """
 import os
 import sys
@@ -108,22 +118,43 @@ def build_payload(resource, category):
 
 
 def push_publication(payload, target):
-    """POST one publication to one hub. Returns True on success."""
+    """Push one resource to one hub. Returns True on success.
+
+    The core Raster endpoint is authoritative; the GeoNode cache endpoint is
+    best-effort (a 404 means the geonode module is off on that hub).
+    """
     url, api_key = target
-    response = requests.post(
-        f"{url}/api/v1/geonode/publications",
+    headers = {"X-API-Key": api_key}
+
+    res = requests.post(
+        f"{url}/api/v1/rasters",
         json=payload,
-        headers={"X-API-Key": api_key},
+        headers=headers,
         verify=VERIFY,
         timeout=REQUEST_TIMEOUT,
     )
-    if response.status_code in (200, 201):
-        return True
-    print(
-        f"Push to {url} failed for geonode_id={payload['geonode_id']}: "
-        f"{response.status_code} {response.text}"
+    if res.status_code not in (200, 201):
+        print(
+            f"Raster push to {url} failed for "
+            f"geonode_id={payload['geonode_id']}: "
+            f"{res.status_code} {res.text}"
+        )
+        return False
+
+    gn = requests.post(
+        f"{url}/api/v1/geonode/publications",
+        json=payload,
+        headers=headers,
+        verify=VERIFY,
+        timeout=REQUEST_TIMEOUT,
     )
-    return False
+    if gn.status_code not in (200, 201, 404):
+        print(
+            f"GeoNode cache push to {url} failed for "
+            f"geonode_id={payload['geonode_id']}: "
+            f"{gn.status_code} {gn.text}"
+        )
+    return True
 
 
 def sync_category(category, targets):

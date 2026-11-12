@@ -83,22 +83,42 @@ def test_parse_targets_empty_when_unset(monkeypatch):
     assert job.parse_targets() == []
 
 
-def test_push_publication_sends_api_key():
+def test_push_publication_pushes_raster_then_geonode():
     with mock.patch("requests.post") as post:
         post.return_value = mock.Mock(status_code=201)
         target = ("http://test.hub.com", "test-key")
         assert job.push_publication({"geonode_id": 42}, target) is True
-    args, kwargs = post.call_args
-    assert args[0] == "http://test.hub.com/api/v1/geonode/publications"
-    assert kwargs["headers"] == {"X-API-Key": "test-key"}
-    assert kwargs["verify"] is True
+    urls = [call.args[0] for call in post.call_args_list]
+    assert urls == [
+        "http://test.hub.com/api/v1/rasters",
+        "http://test.hub.com/api/v1/geonode/publications",
+    ]
+    for call in post.call_args_list:
+        assert call.kwargs["headers"] == {"X-API-Key": "test-key"}
+        assert call.kwargs["verify"] is True
 
 
-def test_push_publication_reports_failure():
+def test_push_publication_fails_on_core_raster_error():
+    """A bad key / error on the authoritative Raster push fails the push and
+    does not fall through to the GeoNode cache."""
     with mock.patch("requests.post") as post:
         post.return_value = mock.Mock(status_code=403, text="Forbidden")
         target = ("http://test.hub.com", "test-key")
         assert job.push_publication({"geonode_id": 42}, target) is False
+    assert post.call_count == 1
+
+
+def test_push_publication_tolerates_geonode_module_off():
+    """A 404 on the GeoNode cache (module off) is not a failure; the core
+    Raster push still determines success."""
+    with mock.patch("requests.post") as post:
+        post.side_effect = [
+            mock.Mock(status_code=201),
+            mock.Mock(status_code=404, text="Not Found"),
+        ]
+        target = ("http://test.hub.com", "test-key")
+        assert job.push_publication({"geonode_id": 42}, target) is True
+    assert post.call_count == 2
 
 
 def test_sync_category_pages_until_total_reached():

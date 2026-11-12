@@ -112,10 +112,21 @@ cleanup_output_data
 
 run_cdi_scripts "$MODE"
 
-# A failed upload (e.g. GeoNode briefly down) must not skip the portal sync:
-# whatever GeoNode already holds should still reach the hub. Record the
-# failure, run the sync, then exit non-zero so the run is still flagged.
-upload_to_geonode || upload_failed=1
+# GeoNode upload is the expensive network step. Set ENABLE_GEONODE_UPLOAD=false
+# (in .env or the environment) to skip it on runs that don't need it, e.g. the
+# rasters are already in GeoNode or this run only produces local GeoTIFFs.
+# Default true keeps the normal behaviour.
+ENABLE_GEONODE_UPLOAD=${ENABLE_GEONODE_UPLOAD:-true}
+
+if [ "$ENABLE_GEONODE_UPLOAD" = "true" ]; then
+    # A failed upload (e.g. GeoNode briefly down) must not skip the portal
+    # sync: whatever GeoNode already holds should still reach the hub. Record
+    # the failure, run the sync, then exit non-zero so the run is flagged.
+    upload_to_geonode || upload_failed=1
+else
+    echo "ENABLE_GEONODE_UPLOAD=$ENABLE_GEONODE_UPLOAD, skipping GeoNode upload."
+fi
+
 sync_geonode_to_portal
 
 if [ -n "${upload_failed:-}" ]; then

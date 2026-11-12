@@ -10,7 +10,10 @@ services:
       - ./input_data:/app/input_data
       - ./output_data:/app/output_data
       - ./logs:/app/logs
-      - ./config/cdi_project_settings.json:/app/src/cdi-scripts/cdi_project_settings.conf
+      # Mount the whole config dir (not the single JSON as .conf): change-cdi-*.sh
+      # rewrite /app/config/cdi_project_settings.json, and job.sh syncs it to the
+      # scripts' .conf at run start. A single-file bind mount breaks both.
+      - ./config:/app/config
       - ./.env:/app/.env
     working_dir: /app
     # Don't run the script immediately; let user exec into container
