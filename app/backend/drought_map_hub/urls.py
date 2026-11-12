@@ -31,6 +31,13 @@ if module_enabled("geonode"):
         6, path("api/", include("api.v1.v1_geonode.urls"), name="v1_geonode")
     )
 
+# DIH-7: the read-only client-data endpoints are wired only when the
+# ``datasets`` module is enabled. Off -> the routes are absent -> 404.
+if module_enabled("datasets"):
+    urlpatterns.insert(
+        6, path("api/", include("api.v1.v1_datasets.urls"), name="v1_datasets")
+    )
+
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(

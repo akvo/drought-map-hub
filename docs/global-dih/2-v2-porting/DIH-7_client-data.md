@@ -5,7 +5,8 @@
 **Task ID**: DIH-7
 **Author**: Iwan Firmawan (with Claude)
 **Date**: 2026-10-30
-**Status**: Draft
+**Status**: Phase 8a done (backend + admin/CLI import); Phase 8b deferred
+(no Insights host in this repo yet — lands with DIH-10)
 **Effort**: ~10h total (incl. agentic coding) → 2 phases ≤8h each (see Phases): 8a ~6h, 8b ~4h.
 **Depends on**: [DIH-2](DIH-2_module-system.md); dataset metadata from [DIH-4](DIH-4_country-pack.md) (`country.json → datasets`)
 
@@ -39,7 +40,13 @@ class AdminDatasetValue(models.Model):
 
 Label/unit/source/description live in `country.json` (DIH-4), not per row.
 
-**Import** (team-run, B-4): `python manage.py import_admin_dataset <key> file.csv` (cols `administration_id,period,value`, period `YYYY-MM`). Idempotent upsert on (administration, dataset, period); fails loudly on an unknown `administration_id` or an undeclared `dataset` key; reports inserted/updated/rejected. No upload endpoint.
+**Import** (team-run, B-4) — two paths sharing one `importer.py` (validation + upsert):
+- **Django admin** (as built, #—): a staff-gated CSV import on the `AdminDatasetValue` changelist (download a template, fill it, upload), mirroring the Eswatini weather admin (`v1_weather/admin.py`). This is the primary UX for bulk-importing additional (non-satellite) data.
+- **CLI**: `python manage.py import_admin_dataset <key> file.csv` (cols `administration_id,period,value`, period `YYYY-MM`), for automation.
+
+Both: idempotent upsert on (administration, dataset, period); reject (never create) an unknown `administration_id`; blank/`null` value → NULL (missing, never 0); report inserted/updated/rejected. No **public** upload endpoint — the admin import is staff-only inside `/admin`.
+
+> **Supersedes the original "no file parsing in the web process" AC:** the prior-art weather hub parses the upload in a staff-gated admin view, so this does too. The constraint is narrowed to "no *public* upload endpoint", not "no web parsing".
 
 **API** (read-only, public like the rest of Insights): `GET /api/v1/datasets/{key}?period=YYYY-MM` and `GET /api/v1/datasets/{key}/periods`. Response follows the house mock contract (`key`, `label`, `value`, `data`, `meta`):
 
@@ -73,7 +80,7 @@ Label/unit/source/description live in `country.json` (DIH-4), not per row.
 
 - [ ] An imported admin-level dataset appears as an Insights tab — a map + a table per month.
 - [ ] Import is idempotent; unknown `administration_id`/dataset key is rejected, not created; null = missing (never 0).
-- [ ] The datasets API is read-only + public; no upload endpoint; no file parsing in the web process.
+- [x] The datasets **read** API is read-only + public; no *public* upload endpoint (bulk import is the staff-gated admin view or the CLI).
 - [ ] With the `datasets` module off, the tab is absent.
 
 **Verify by (goal-driven):** unit test `import_admin_dataset` upsert + reject + null handling; API test returns the house-contract shape; a test with `datasets` off asserts the tab/routes are absent.
@@ -82,8 +89,8 @@ Label/unit/source/description live in `country.json` (DIH-4), not per row.
 
 | Phase | Effort | Scope | Technical acceptance |
 |---|---|---|---|
-| **8a** backend | ~6h | `AdminDatasetValue` model + migration, `import_admin_dataset` command, read-only API (`/datasets/{key}`, `/periods`), gated by `datasets` | Migration fwd/back; import idempotent + rejects unknown id/key + null≠0; API returns the house-contract shape; module off → routes 404 |
-| **8b** frontend | ~4h | Generic "Other data" Insights tab (choropleth + table per key/month), gated | Tab renders from `config.datasets`; absent when `datasets` off |
+| **8a** backend | ~6h | `AdminDatasetValue` model + migration, shared `importer.py`, **admin CSV import** + `import_admin_dataset` CLI, read-only API (`/datasets/{key}`, `/periods`), gated by `datasets` | ✅ Done — migration fwd/back; import idempotent + rejects unknown id + null≠0; API returns the house-contract shape; module off → routes 404 (17 tests) |
+| **8b** frontend | ~4h | Generic "Other data" Insights tab (choropleth + table per key/month), gated | ⏸ Deferred — no Insights host in this repo yet; lands with DIH-10 |
 
 ## 6. Dependencies / hand-offs
 

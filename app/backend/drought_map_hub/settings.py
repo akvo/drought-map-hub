@@ -51,6 +51,7 @@ API_APPS = [
     "api.v1.v1_rundeck",
     "api.v1.v1_setup",
     "api.v1.v1_geonode",
+    "api.v1.v1_datasets",
 ]
 
 # Add third party apps below
