@@ -6,6 +6,7 @@ from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
 )
+from utils.modules import module_enabled
 
 urlpatterns = [
     path("api/", include("api.v1.v1_init.urls"), name="v1_init"),
@@ -22,6 +23,13 @@ urlpatterns = [
     ),
     path("admin/", admin.site.urls),
 ]
+
+# DIH-1: the GeoNode push/read endpoints are wired only when the module is
+# enabled (DIH-2). Off -> the routes are absent -> 404.
+if module_enabled("geonode"):
+    urlpatterns.insert(
+        6, path("api/", include("api.v1.v1_geonode.urls"), name="v1_geonode")
+    )
 
 # Serve media files in development
 if settings.DEBUG:

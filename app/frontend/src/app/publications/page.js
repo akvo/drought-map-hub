@@ -1,18 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Button,
-  Flex,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
+import { Button, Flex, Select, Space, Table, Tag, Typography } from "antd";
 import { Can } from "@/components";
 import {
   MAP_CATEGORY_OPTIONS,
@@ -21,6 +11,7 @@ import {
   PUBLICATION_STATUS_OPTIONS,
 } from "@/static/config";
 import { api } from "@/lib";
+import { useModule } from "@/lib/useModule";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 
@@ -29,8 +20,7 @@ dayjs.extend(advancedFormat);
 const { Title } = Typography;
 
 const PublicationsPage = () => {
-  const [publications, setPublications] = useState([]);
-  const [preview, setPreview] = useState(null);
+  const [rasters, setRasters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [preload, setPreload] = useState(true);
   const [totalData, setTotalData] = useState(0);
@@ -38,34 +28,30 @@ const PublicationsPage = () => {
   const [category, setCategory] = useState(MAP_CATEGORY_OPTIONS[0].value);
   const [status, setStatus] = useState(null);
   const router = useRouter();
+  // The list is core (platform Raster assets, served from the DB and never
+  // dependent on GeoNode). Only the GeoNode deep link is gated by the module.
+  const geonodeOn = useModule("geonode");
 
   const columns = [
     {
       title: "CREATED AT",
       dataIndex: "created",
       key: "created",
-      // defaultSortOrder: "descend",
-      // sorter: (a, b) => new Date(a.created) - new Date(b.created),
       render: (_, { created }) =>
-        dayjs(created).format("MMMM Do, YYYY - h:mm A"),
+        created ? dayjs(created).format("MMMM Do, YYYY - h:mm A") : "-",
     },
     {
-      title: "PREVIEW",
-      dataIndex: "thumbnail_url",
-      key: "thumbnail_url",
-      render: (_, record) => {
-        return (
-          <a role="button" onClick={() => setPreview(record)}>
-            <img
-              width={100}
-              height={100}
-              src={record?.thumbnail_url || "/images/no-thumbnail.png"}
-              alt={record?.title}
-            />
-            <small>{record?.title}</small>
-          </a>
-        );
-      },
+      title: "RASTER",
+      dataIndex: "title",
+      key: "title",
+      render: (_, { title }) => (
+        <div className="flex gap-3 items-center">
+          <div className="bg-[#eceff8] rounded-full w-9 h-9 shrink-0" />
+          <span className="text-sm font-medium text-[#333] break-all">
+            {title || "-"}
+          </span>
+        </div>
+      ),
     },
     {
       title: "PUBLICATION DATE",
@@ -73,45 +59,40 @@ const PublicationsPage = () => {
       key: "year_month",
       defaultSortOrder: "descend",
       sorter: (a, b) => new Date(a.year_month) - new Date(b.year_month),
-      render: (_, { year_month }) => dayjs(year_month).format("MMMM YYYY"),
+      render: (_, { year_month }) =>
+        year_month ? dayjs(year_month).format("MMMM YYYY") : "-",
     },
     {
       title: "STATUS",
       dataIndex: "status",
       key: "status",
       render: (_, { status }) => {
-        const findStatus = PUBLICATION_STATUS_OPTIONS.find(
+        const found = PUBLICATION_STATUS_OPTIONS.find(
           (s) => s?.value === status,
         );
         return (
-          <Tag color={findStatus?.color}>
-            {findStatus?.label || "Not yet started"}
-          </Tag>
+          <Tag color={found?.color}>{found?.label || "Not yet started"}</Tag>
         );
       },
     },
     {
       title: "ACTION",
-      dataIndex: "publication_id",
-      key: "id",
+      key: "action",
+      align: "right",
       render: (_, { pk, publication_id, detail_url, status }) => {
         const routeURL = publication_id
           ? status === PUBLICATION_STATUS.in_validation
             ? `/publications/${publication_id}/validation`
             : `/publications/${publication_id}`
-          : `/publications/create?cdi_geonode_id=${pk}`;
+          : `/publications/create?raster_id=${pk}`;
         return (
           <Space>
-            <Button type="link" href={detail_url} target="_blank">
-              Open in Geonode
-            </Button>
-
-            <Button
-              type="primary"
-              onClick={() => {
-                router.push(routeURL);
-              }}
-            >
+            {geonodeOn && detail_url && (
+              <Button type="link" href={detail_url} target="_blank">
+                Open in Geonode
+              </Button>
+            )}
+            <Button type="primary" onClick={() => router.push(routeURL)}>
               {publication_id ? "View" : "Start new Publication"}
             </Button>
           </Space>
@@ -130,16 +111,14 @@ const PublicationsPage = () => {
     try {
       if (preload) {
         setPreload(false);
-        const apiURL = status
-          ? `/admin/cdi-geonode?page=${page}&category=${category}&status=${status}`
-          : `/admin/cdi-geonode?page=${page}&category=${category}`;
+        const base = `/admin/rasters?page=${page}&category=${category}`;
+        const apiURL = status ? `${base}&status=${status}` : base;
         const { data, total } = await api("GET", apiURL);
-        if (total) {
+        if (total !== undefined) {
           setTotalData(total);
         }
         if (data) {
-          const _publications = data.map((d) => ({ key: d?.id, ...d }));
-          setPublications(_publications);
+          setRasters(data.map((d) => ({ key: d?.pk, ...d })));
         }
         setLoading(false);
       }
@@ -153,6 +132,7 @@ const PublicationsPage = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
   return (
     <div className="w-full h-auto space-y-4 pt-6">
       <Flex align="center" justify="space-between">
@@ -166,11 +146,7 @@ const PublicationsPage = () => {
             placeholder="Filter by Category"
             onChange={(value) => {
               setPage(1);
-              if (value) {
-                setCategory(value);
-              } else {
-                setCategory(MAP_CATEGORY_OPTIONS[0].value);
-              }
+              setCategory(value || MAP_CATEGORY_OPTIONS[0].value);
               setPreload(true);
             }}
             value={category}
@@ -188,9 +164,9 @@ const PublicationsPage = () => {
       <Can I="read" a="Publication">
         <Table
           columns={columns}
-          dataSource={publications}
+          dataSource={rasters}
           loading={loading}
-          rowClassName={"cursor-pointer"}
+          rowClassName="cursor-pointer"
           pagination={
             totalData < PAGE_SIZE
               ? false
@@ -210,29 +186,6 @@ const PublicationsPage = () => {
           rowKey="pk"
         />
       </Can>
-      <Modal
-        title={preview?.title}
-        open={preview?.pk}
-        onOk={() => {
-          setPreview(null);
-        }}
-        onCancel={() => {
-          setPreview(null);
-        }}
-        cancelButtonProps={{ style: { display: "none" } }}
-        width={800}
-        className="w-full flex flex-col items-center"
-        closable
-      >
-        {preview?.embed_url && (
-          <iframe
-            width={"100%"}
-            height={600}
-            src={preview.embed_url}
-            className="min-w-[640px]"
-          />
-        )}
-      </Modal>
     </div>
   );
 };

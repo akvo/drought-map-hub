@@ -40,12 +40,12 @@ const AboutPage = async () => {
           </p>
           <ul className="list-disc list-inside pl-4 leading-8">
             <li>
-              <strong>Land Surface Temperature (LST)</strong> – measures heat
-              stress and temperature anomalies
+              <strong>Evaporative Stress Index (ESI)</strong> – captures water
+              and evapotranspiration stress in vegetation
             </li>
             <li>
-              <strong>Normalized Difference Vegetation Index (NDVI)</strong> –
-              captures vegetation health and greenness
+              <strong>Enhanced Vegetation Index 2 (EVI2)</strong> – captures
+              vegetation health and greenness
             </li>
             <li>
               <strong>Standardized Precipitation Index (SPI)</strong> – assesses
@@ -73,8 +73,8 @@ const AboutPage = async () => {
           <ol className="list-decimal list-inside pl-4 leading-8">
             <li>
               <b>Data Retrieval</b> – The system checks for the latest datasets
-              from global sources, and automatically downloads and stores LST,
-              NDVI, SPI, and Soil Moisture data.
+              from global sources, and automatically downloads and stores ESI,
+              EVI2, SPI, and Soil Moisture data.
             </li>
             <li>
               <b>Processing</b> – Computes percentile ranks and long-term trends

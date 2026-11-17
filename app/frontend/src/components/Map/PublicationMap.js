@@ -22,6 +22,7 @@ import {
 } from "@/static/config";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
+import { useModule } from "@/lib/useModule";
 import { useCallback, useMemo, useState } from "react";
 import { ClockIcon, VerifiedIcon } from "../Icons";
 import classNames from "classnames";
@@ -63,6 +64,7 @@ const PublicationMap = ({
   const [loading, setLoading] = useState(false);
   const [number_reviews] = publication?.progress_reviews?.split("/");
   const router = useRouter();
+  const geonodeOn = useModule("geonode");
   const [modal, contextHolder] = Modal.useModal();
 
   const openReviewProgress = useCallback(() => {
@@ -136,20 +138,22 @@ const PublicationMap = ({
         label: "Status",
         children: <Badge color={status?.color} text={status?.label} />,
       },
-      {
-        key: 3,
-        label: "Geonode",
-        children: (
-          <>
-            <a
-              href={`${geonodeBaseURL}/catalogue/#/dataset/${publication?.cdi_geonode_id}`}
-              target="_blank"
-            >
-              View in Geonode
-            </a>
-          </>
-        ),
-      },
+      ...(geonodeOn
+        ? [
+            {
+              key: 3,
+              label: "Geonode",
+              children: (
+                <a
+                  href={`${geonodeBaseURL}/catalogue/#/dataset/${publication?.cdi_geonode_id}`}
+                  target="_blank"
+                >
+                  View in Geonode
+                </a>
+              ),
+            },
+          ]
+        : []),
       {
         key: 4,
         label: "Bulletin URL",
@@ -190,7 +194,7 @@ const PublicationMap = ({
     ];
     // }
     // return items;
-  }, [publication, geonodeBaseURL, openReviewProgress]);
+  }, [publication, geonodeBaseURL, geonodeOn, openReviewProgress]);
 
   const onFeature = (feature) => {
     const findAdm = data?.find(
