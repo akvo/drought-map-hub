@@ -51,6 +51,40 @@ class UserModelTestCase(TestCase):
         ).count()
         self.assertEqual(total_admin, 1)
 
+    def test_create_user_replaces_soft_deleted_email(self):
+        # Re-registering a soft-deleted email drops the stale row and creates
+        # a fresh account instead of hitting the unique-email constraint.
+        self.user.soft_delete()
+        recreated = SystemUser.objects._create_user(
+            email="test@test.org", password="New1234", name="recreated"
+        )
+        self.assertIsNone(recreated.deleted_at)
+        self.assertEqual(recreated.name, "recreated")
+        self.assertEqual(
+            SystemUser.objects.filter(email="test@test.org").count(), 1
+        )
+
+    def test_recreated_user_drops_stale_admin_rights(self):
+        # A soft-deleted admin's email, re-registered as a plain reviewer,
+        # must not inherit is_superuser / email_verified from the old row.
+        admin = SystemUser.objects.create_superuser(
+            email="stale@test.org", password="Admin1234", name="stale admin"
+        )
+        admin.email_verified = True
+        admin.save()
+        admin_id = admin.id
+        admin.soft_delete()
+        recreated = SystemUser.objects._create_user(
+            email="stale@test.org",
+            password="New1234",
+            name="fresh",
+            role=UserRoleTypes.reviewer,
+        )
+        self.assertNotEqual(recreated.id, admin_id)
+        self.assertFalse(recreated.is_superuser)
+        self.assertFalse(recreated.email_verified)
+        self.assertEqual(recreated.role, UserRoleTypes.reviewer)
+
     def test_create_admin_without_is_superuser(self):
         with self.assertRaises(ValueError) as context:
             SystemUser.objects.create_superuser(

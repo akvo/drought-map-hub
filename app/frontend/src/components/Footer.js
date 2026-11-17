@@ -13,7 +13,7 @@ const Footer = ({ appName = APP_SETTINGS.title }) => {
   }
   return (
     <footer className="w-full px-0 py-6 bg-primary">
-      <div className="container w-full text-white text-base flex flex-row items-center justify-between">
+      <div className="container w-full text-primary-foreground text-base flex flex-row items-center justify-between">
         <div>
           <p>
             &copy; {dayjs().format("YYYY")} - {appName}

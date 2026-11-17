@@ -8,6 +8,7 @@ class SiteConfig(models.Model):
     geojson_file = models.CharField(max_length=191, blank=True, null=True)
     map_center = models.JSONField(blank=True, null=True)
     map_name_key = models.CharField(max_length=55, blank=True, null=True)
+    theme = models.CharField(max_length=50, default="Ocean Blue")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -26,6 +27,7 @@ class Organization(models.Model):
     )
     is_twg = models.BooleanField(default=False)
     is_collaborator = models.BooleanField(default=False)
+    is_host = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

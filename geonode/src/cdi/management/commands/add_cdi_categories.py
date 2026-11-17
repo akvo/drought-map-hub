@@ -9,8 +9,9 @@ class Command(BaseCommand):
         cdi_categories = [
             "cdi-raster-map",
             "spi-raster-map",
-            "ndvi-raster-map",
-            "lst-raster-map"
+            "evi2-raster-map",  # was ndvi-raster-map
+            "esi-raster-map",   # was lst-raster-map
+            "sm-raster-map",    # SM now has weight > 0 and is exported
         ]
         for category_name in cdi_categories:
             category, created = TopicCategory.objects.get_or_create(
