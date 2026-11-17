@@ -4,6 +4,10 @@ version: '3.9'
 x-common-django:
   &default-common-django
   image: ${COMPOSE_PROJECT_NAME}/geonode:${GEONODE_BASE_IMAGE_VERSION}
+  # Upstream geonode/* base images are published for linux/amd64 only.
+  # Pin the platform so Docker builds/runs them (under emulation on arm64);
+  # a no-op on native amd64 hosts.
+  platform: linux/amd64
   restart: unless-stopped
   env_file:
     - .env
@@ -53,6 +57,7 @@ services:
   # Nginx is serving django static and media files and proxies to django and geonode
   geonode:
     image: ${COMPOSE_PROJECT_NAME}/nginx:${NGINX_BASE_IMAGE_VERSION}
+    platform: linux/amd64
     build:
       context: ./docker/nginx
       dockerfile: Dockerfile
@@ -88,6 +93,7 @@ services:
   # Geoserver backend
   geoserver:
     image: ${COMPOSE_PROJECT_NAME}/geoserver:${GEOSERVER_BASE_IMAGE_VERSION}
+    platform: linux/amd64
     build:
       context: ./docker/geoserver
       dockerfile: Dockerfile
@@ -119,6 +125,7 @@ services:
 
   data-dir-conf:
     image: ${COMPOSE_PROJECT_NAME}/geoserver_data:${GEOSERVER_DATA_BASE_IMAGE_VERSION}
+    platform: linux/amd64
     build:
       context: ./docker/geoserver_data
       dockerfile: Dockerfile
@@ -135,6 +142,7 @@ services:
   # PostGIS database.
   db:
     image: ${COMPOSE_PROJECT_NAME}/postgis:${POSTGRES_BASE_IMAGE_VERSION}
+    platform: linux/amd64
     build:
       context: ./docker/postgresql
       dockerfile: Dockerfile
