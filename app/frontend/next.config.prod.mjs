@@ -5,7 +5,36 @@ import CopyPlugin from "copy-webpack-plugin";
 /** @type {import('next').NextConfig} */
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const geonodeURL = process.env.GEONODE_BASE_URL.split("://");
+
+// Build the next/image remotePattern for GeoNode-hosted uploads from
+// GEONODE_BASE_URL. Required at build time; fail with a clear, actionable
+// message instead of Next's cryptic "hostname is missing" validation error.
+const geonodeImagePattern = () => {
+  const base = process.env.GEONODE_BASE_URL;
+  if (!base) {
+    throw new Error(
+      "GEONODE_BASE_URL is not set. The frontend build needs it (next/image " +
+        "remotePatterns) and the app needs it at runtime. Set it to the GeoNode " +
+        "base URL including scheme, e.g. https://geonode.example.org.",
+    );
+  }
+  let url;
+  try {
+    url = new URL(base);
+  } catch {
+    throw new Error(
+      `GEONODE_BASE_URL is not a valid URL: "${base}". ` +
+        "Expected a full URL with scheme, e.g. https://geonode.example.org.",
+    );
+  }
+  return {
+    protocol: url.protocol.replace(/:$/, ""),
+    hostname: url.hostname,
+    port: url.port,
+    pathname: "/uploaded/**",
+    search: "",
+  };
+};
 
 const nextConfig = {
   reactStrictMode: true,
@@ -43,15 +72,7 @@ const nextConfig = {
     return config;
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: geonodeURL[0],
-        hostname: geonodeURL[1],
-        port: "",
-        pathname: "/uploaded/**",
-        search: "",
-      },
-    ],
+    remotePatterns: [geonodeImagePattern()],
   },
 };
 
