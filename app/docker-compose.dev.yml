@@ -19,6 +19,8 @@ services:
       - "5433:5432"
   backend:
     image: python:3.12.3
+    # rasterio has no linux/arm64 wheel; pin amd64 so Apple Silicon works
+    platform: linux/amd64
     working_dir: /app
     command: ["./start.sh"]
     volumes:
@@ -64,6 +66,8 @@ services:
       - backend
   worker:
     image: python:3.12.3
+    # rasterio has no linux/arm64 wheel; pin amd64 so Apple Silicon works
+    platform: linux/amd64
     working_dir: /app
     command: ["./run_worker.sh"]
     volumes:

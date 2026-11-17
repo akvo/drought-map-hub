@@ -4,6 +4,8 @@ services:
       context: ./src
       dockerfile: Dockerfile
     image: cdi-scripts:latest
+    # rasterio 1.3.10 has no linux/arm64 wheel; pin amd64 so Apple Silicon works
+    platform: linux/amd64
     container_name: cdi
     volumes:
       - ./src:/app/src
