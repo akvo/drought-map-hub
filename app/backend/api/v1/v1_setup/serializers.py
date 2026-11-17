@@ -1,6 +1,5 @@
 import os
 import ast
-import json
 from django.conf import settings
 from django.core.management import call_command
 from django.utils.crypto import get_random_string
@@ -47,7 +46,6 @@ class SetupSerializer(serializers.ModelSerializer):
             'map_center',
             'map_name_key',
             'theme',
-            'modules',
             'organizations',
             'created_at',
             'updated_at'
@@ -119,14 +117,6 @@ class SetupSerializer(serializers.ModelSerializer):
                 # Create a mutable copy of data
                 data_dict = dict(data.items())
                 data_dict['organizations'] = organizations_data
-                # modules arrives as a JSON string over multipart.
-                if isinstance(data_dict.get('modules'), str):
-                    try:
-                        data_dict['modules'] = json.loads(
-                            data_dict['modules']
-                        )
-                    except (ValueError, TypeError):
-                        pass
                 return super().to_internal_value(data_dict)
         return super().to_internal_value(data)
 
@@ -211,6 +201,22 @@ class SetupSerializer(serializers.ModelSerializer):
 class SetupResponseSerializer(serializers.ModelSerializer):
     organizations = OrganizationSerializer(many=True, read_only=True)
     is_configured = serializers.SerializerMethodField()
+    modules = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_modules(self, obj):
+        """Optional-module flags from env ``DIH_MODULES`` (DIH-2).
+
+        Env is the single source of truth; this mirrors the backend gate
+        ``utils.modules.module_enabled`` for the client ``useModule`` hook.
+        ``None`` (var unset) -> every module on. A configured list becomes
+        ``{name: True}`` for the enabled names (absent name = off), matching
+        ``module_enabled``'s ``name in modules`` semantics.
+        """
+        enabled = getattr(settings, "DIH_MODULES", None)
+        if enabled is None:
+            return None
+        return {name: True for name in enabled}
 
     @extend_schema_field(OpenApiTypes.BOOL)
     def get_is_configured(self, obj):

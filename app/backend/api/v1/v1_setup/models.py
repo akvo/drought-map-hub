@@ -1,17 +1,5 @@
 from django.db import models
 
-from utils.modules import module_enabled
-
-# Optional modules the setup wizard (DIH-9) exposes.
-WIZARD_MODULES = ("geonode", "weather", "iks")
-
-
-def default_modules():
-    # DIH-2/DIH-9: a fresh instance mirrors the deployment's DIH_MODULES env
-    # (via module_enabled) so the wizard/frontend flags agree with the backend
-    # route gate instead of a hardcoded default. DIH_MODULES unset -> all on.
-    return {name: module_enabled(name) for name in WIZARD_MODULES}
-
 
 class SiteConfig(models.Model):
     uuid = models.CharField(max_length=36, unique=True)
@@ -21,7 +9,6 @@ class SiteConfig(models.Model):
     map_center = models.JSONField(blank=True, null=True)
     map_name_key = models.CharField(max_length=55, blank=True, null=True)
     theme = models.CharField(max_length=50, default="Ocean Blue")
-    modules = models.JSONField(default=default_modules)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

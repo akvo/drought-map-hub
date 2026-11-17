@@ -7,7 +7,7 @@ services:
       - 8000:8000 # backend port
       - 5050:5050 # pgAdmin port
       - 81:81 # frontend port
-      - 4440:4440 # rundeck port
+      # Rundeck (port 4440) is an optional add-on: see docker-compose.rundeck.yml
   db:
     image: postgres:18.6-alpine
     container_name: db
@@ -107,26 +107,6 @@ services:
       db:
         condition: service_healthy
     network_mode: service:mainnetwork
-  rundeck:
-    build:
-      context: ./
-      dockerfile: rundeck/Dockerfile
-    container_name: rundeck
-    env_file: "./rundeck.env"
-    environment:
-      RUNDECK_SERVER_FORWARDED: true
-      RUNDECK_API_TOKENS_DURATION_MAX: 0
-    network_mode: service:mainnetwork
-    volumes:
-      - rundeck_data:/home/rundeck/server/data
-      - rundeck_etl:/home/rundeck/server/logs
-      - rundeck_logs:/home/rundeck/server/logs
-      - ./rundeck/realm.properties:/home/rundeck/server/config/realm.properties
-      - ./rundeck/templates:/home/rundeck/server/config/templates
-      - ./.env:/home/rundeck/server/config/.env
 
 volumes:
   pg-data:
-  rundeck_data:
-  rundeck_etl:
-  rundeck_logs:
