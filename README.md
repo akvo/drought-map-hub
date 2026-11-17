@@ -188,6 +188,43 @@ After the initial script execution, some manual configurations are required:
     *   If **Rundeck integration is successful**, configure the email for CDI notifications.
     *   If Rundeck integration fails, create a new Rundeck connection with the available projects and jobs, then configure email notifications.
 
+### Production with an Existing (External) Rundeck
+
+By default, production mode also runs this repo's own Rundeck container (`app/docker-compose.rundeck.yml`). If an existing Rundeck instance should be used instead, deploy only the Django + Next.js stack (db, backend, worker, backend-cron, frontend):
+
+1.  In `app/.env`, point the backend at the existing Rundeck:
+    ```env
+    RUNDECK_MODE=external
+    RUNDECK_API_URL="https://rundeck.example.org/api/50"
+    RUNDECK_API_TOKEN=<token created on the existing Rundeck>
+    ```
+    The backend only talks to Rundeck over its REST API, so the URL must be reachable from the backend container. Create the token in the Rundeck UI (User → Profile → API Tokens) or with `rd tokens create`, for a user that can read and run jobs and edit job notifications in the project.
+2.  One-time setup on the existing Rundeck (the bundled container does this automatically on first start; an external instance needs it done once):
+    *   Create (or reuse) a project, e.g. `DroughtMapHub`.
+    *   Import `app/rundeck/templates/job_template.json` into it:
+        ```bash
+        curl -H "X-Rundeck-Auth-Token: $RUNDECK_API_TOKEN" -H "Content-Type: application/json" \
+             --data @app/rundeck/templates/job_template.json \
+             -X POST "https://rundeck.example.org/api/50/project/DroughtMapHub/jobs/import?dupeOption=skip"
+        ```
+    *   Register the CDI VM as a node named `cdi-script` (the job's node filter) with SSH access, as described in **Rundeck Configuration** above.
+3.  Start the app without Rundeck:
+    ```bash
+    ./run.sh mode=prod service=app rundeck=external
+    ```
+    `rundeck=external` (or `RUNDECK_MODE=external` in `app/.env`) skips the Rundeck container and its port 4440, and Traefik no longer routes `/rundeck`. The script warns if `RUNDECK_API_URL` still points at localhost or the token is still a placeholder.
+4.  In the DMH settings page, select the project and job from the existing Rundeck and configure the notification emails.
+
+### Akvo Kubernetes Deployment (test cluster)
+
+The web app (Django + Next.js) can also run on Akvo's GKE test cluster, the same way as other Akvo apps. GeoNode, Rundeck and the CDI pipeline are **not** deployed there; the backend uses existing instances through `GEONODE_*` and `RUNDECK_*`.
+
+*   **Images**: `.github/workflows/deploy-k8s.yml` runs the tests on every push to `main`, builds `eu.gcr.io/akvo-lumen/generic-dih/{nginx,frontend,backend,worker}` and rolls out the deployments. Routing lives in `app/nginx/` (replaces Traefik).
+*   **Manifests**: `akvo-config/k8s-manifests/test/generic-dih/` (namespace, ingress for `generic-dih.akvotest.org`, Postgres, shared NFS volume, deployments, daily `check_overdue_reviews` CronJob). They are applied when merged to akvo-config `master`.
+*   **Secrets**: Vault `kv/test/generic-dih` (key list in `3-secrets.yml`), plus GitHub "Test" environment secrets `GCLOUD_SERVICE_ACCOUNT_REGISTRY`, `GCLOUD_SERVICE_ACCOUNT_K8S`, `WEBDOMAIN`, `SESSION_SECRET`, `SETUP_SECRET_KEY`, `GEONODE_BASE_URL`.
+*   **Instance files**: `app/backend/source/` (country boundaries, generated `config.min.js`, CDI settings) and `media/` live on the shared volume, so they survive restarts and are shared by backend and worker.
+*   **First run**: open `/setup` and complete the setup wizard; it seeds roles and generates the frontend config.
+
 ### Post-Installation Script Execution
 
 Once all services are available and running properly, execute the `post-installation.sh` script to complete the GeoServer configuration:

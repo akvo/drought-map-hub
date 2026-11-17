@@ -1,12 +1,11 @@
 name: Test
 on:
-  push:
-    branches:
-      - main
+  # Pushes to main run the tests through deploy-k8s.yml (before building images)
   pull_request:
     branches:
       - main
       - feature/**
+  workflow_call:
 
 jobs:
   test:
