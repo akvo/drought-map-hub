@@ -1,0 +1,38 @@
+---
+# Bundled Rundeck add-on for the production stack.
+#
+# Layer it on top of docker-compose.yml only when this instance should run its
+# own Rundeck:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.rundeck.yml up -d
+#
+# When using an existing (external) Rundeck instance, leave this file out and
+# point RUNDECK_API_URL / RUNDECK_API_TOKEN in .env at that instance instead.
+# run.sh picks the right set via `rundeck=bundled|external` (or RUNDECK_MODE
+# in app/.env).
+services:
+  mainnetwork:
+    ports:
+      - 4440:4440 # rundeck port
+  rundeck:
+    build:
+      context: ./
+      dockerfile: rundeck/Dockerfile
+    container_name: rundeck
+    env_file: "./rundeck.env"
+    environment:
+      RUNDECK_SERVER_FORWARDED: true
+      RUNDECK_API_TOKENS_DURATION_MAX: 0
+    network_mode: service:mainnetwork
+    volumes:
+      - rundeck_data:/home/rundeck/server/data
+      - rundeck_etl:/home/rundeck/server/logs
+      - rundeck_logs:/home/rundeck/server/logs
+      - ./rundeck/realm.properties:/home/rundeck/server/config/realm.properties
+      - ./rundeck/templates:/home/rundeck/server/config/templates
+      - ./.env:/home/rundeck/server/config/.env
+
+volumes:
+  rundeck_data:
+  rundeck_etl:
+  rundeck_logs:

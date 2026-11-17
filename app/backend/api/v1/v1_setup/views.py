@@ -194,8 +194,9 @@ class ManageSetupView(APIView):
             organizations, many=True
         ).data
 
-        # Mirror the POST response so the edit path keeps theme, modules,
-        # uuid, etc. in the appConfig the frontend stores (DIH-9).
+        # Mirror the POST response so the edit path keeps theme, modules
+        # (env-derived), uuid, etc. in the appConfig the frontend stores
+        # (DIH-9).
         response_data = SetupResponseSerializer(site_config).data
         response_data['organizations'] = organizations_data
         return Response(response_data, status=status.HTTP_200_OK)

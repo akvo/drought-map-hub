@@ -1,26 +1,31 @@
 #!/bin/bash
 
 # Drought Map Hub Runner Script
-# Usage: ./run.sh mode=<dev|prod> service=<all|geonode|app|cdi> [--dry-run]
+# Usage: ./run.sh mode=<dev|prod> service=<all|geonode|app|cdi> [rundeck=<bundled|external>] [--dry-run]
 
 set -e
 
 # Default values
 MODE=""
 SERVICE=""
+RUNDECK_MODE_ARG=""
 DRY_RUN=false
 DOWN_MODE=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 mode=<dev|prod> service=<all|geonode|app|cdi> [--dry-run]"
+    echo "Usage: $0 mode=<dev|prod> service=<all|geonode|app|cdi> [rundeck=<bundled|external>] [--dry-run]"
     echo "   or: $0 down [--dry-run]"
     echo ""
     echo "Parameters:"
     echo "  mode=dev|prod    - Development or production mode"
     echo "                     Note: Traefik reverse proxy is only used in production mode"
     echo "  service=all|geonode|app|cdi - Which service to run"
+    echo "  rundeck=bundled|external - Prod only. 'bundled' (default) also runs this"
+    echo "                     repo's Rundeck container; 'external' runs only Django +"
+    echo "                     Next.js and uses the Rundeck at RUNDECK_API_URL in app/.env."
+    echo "                     Defaults to RUNDECK_MODE in app/.env, else 'bundled'."
     echo "  down             - Stop all running services"
     echo "  --dry-run        - Show what would be executed without running"
     echo ""
@@ -28,6 +33,7 @@ usage() {
     echo "  $0 mode=dev service=all      # Development mode with direct port access"
     echo "  $0 mode=prod service=all     # Production mode with Traefik reverse proxy"
     echo "  $0 mode=prod service=app --dry-run"
+    echo "  $0 mode=prod service=app rundeck=external   # Django + Next.js only, existing Rundeck"
     echo "  $0 mode=dev service=cdi"
     echo "  $0 down"
     echo "  $0 down --dry-run"
@@ -42,6 +48,9 @@ for arg in "$@"; do
             ;;
         service=*)
             SERVICE="${arg#*=}"
+            ;;
+        rundeck=*)
+            RUNDECK_MODE_ARG="${arg#*=}"
             ;;
         down)
             DOWN_MODE=true
@@ -79,6 +88,19 @@ if [[ "$SERVICE" != "all" && "$SERVICE" != "geonode" && "$SERVICE" != "app" && "
     usage
 fi
 
+# Resolve Rundeck mode: CLI arg > RUNDECK_MODE in app/.env > bundled
+RUNDECK_MODE="$RUNDECK_MODE_ARG"
+if [[ -z "$RUNDECK_MODE" && -f "$SCRIPT_DIR/app/.env" ]]; then
+    RUNDECK_MODE=$(grep -E "^RUNDECK_MODE=" "$SCRIPT_DIR/app/.env" | tail -n 1 | cut -d'=' -f2- | tr -d "\"'")
+fi
+RUNDECK_MODE="${RUNDECK_MODE:-bundled}"
+
+if [[ "$RUNDECK_MODE" != "bundled" && "$RUNDECK_MODE" != "external" ]]; then
+    echo "Error: rundeck must be either 'bundled' or 'external'"
+    usage
+fi
+export RUNDECK_MODE
+
 # Function to check if docker-compose file exists
 check_compose_file() {
     local dir="$1"
@@ -96,6 +118,24 @@ check_compose_file() {
         return 0
     else
         return 1
+    fi
+}
+
+# Warn (don't fail) if app/.env still points at the bundled Rundeck while
+# running in external mode.
+check_external_rundeck() {
+    local app_env="$SCRIPT_DIR/app/.env"
+    local url token
+    url=$(grep -E "^RUNDECK_API_URL=" "$app_env" 2>/dev/null | cut -d'=' -f2- | tr -d "\"'")
+    token=$(grep -E "^RUNDECK_API_TOKEN=" "$app_env" 2>/dev/null | cut -d'=' -f2- | tr -d "\"'")
+
+    echo "Rundeck: external (${url:-RUNDECK_API_URL not set})"
+    if [[ -z "$url" || "$url" == *"localhost"* || "$url" == *"127.0.0.1"* ]]; then
+        echo "Warning: RUNDECK_API_URL in app/.env should point to the existing Rundeck,"
+        echo "         e.g. https://rundeck.example.org/api/50"
+    fi
+    if [[ -z "$token" || "$token" == placeholder* ]]; then
+        echo "Warning: RUNDECK_API_TOKEN in app/.env is not set to a real token from the existing Rundeck."
     fi
 }
 
@@ -139,14 +179,23 @@ run_service() {
                 fi
             fi
         else
+            local prod_files=("-f" "docker-compose.yml")
+            if [[ "$service" == "app" ]]; then
+                if [[ "$RUNDECK_MODE" == "bundled" ]]; then
+                    prod_files+=("-f" "docker-compose.rundeck.yml")
+                    echo "Rundeck: bundled (docker-compose.rundeck.yml)"
+                else
+                    check_external_rundeck
+                fi
+            fi
             if [[ "$DRY_RUN" == "true" ]]; then
-                echo "[DRY RUN] Would execute: docker compose up -d"
+                echo "[DRY RUN] Would execute: docker compose ${prod_files[*]} up -d"
             else
-                echo "Running: docker compose up -d"
-                docker compose up -d
+                echo "Running: docker compose ${prod_files[*]} up -d"
+                docker compose "${prod_files[@]}" up -d
             fi
         fi
-        
+
         if [[ "$DRY_RUN" == "true" ]]; then
             echo "[DRY RUN] $service would be started successfully!"
         else
@@ -281,6 +330,13 @@ create_network() {
     echo ""
 }
 
+# Portable in-place sed (GNU sed on Linux, BSD sed on macOS)
+sed_inplace() {
+    local expr="$1"
+    local file="$2"
+    sed -i.bak "$expr" "$file" && rm -f "$file.bak"
+}
+
 # Function to copy geonode settings to app and cdi when running all services
 copy_geonode_settings() {
     local mode="$1"
@@ -340,27 +396,27 @@ copy_geonode_settings() {
         if [[ -f "$app_env" ]]; then
             # Update or add GEONODE_BASE_URL
             if grep -q "^GEONODE_BASE_URL=" "$app_env"; then
-                sed -i "s|^GEONODE_BASE_URL=.*|GEONODE_BASE_URL=$geonode_base_url|" "$app_env"
+                sed_inplace "s|^GEONODE_BASE_URL=.*|GEONODE_BASE_URL=$geonode_base_url|" "$app_env"
             else
                 echo "GEONODE_BASE_URL=$geonode_base_url" >> "$app_env"
             fi
             
             # Update or add GEONODE_HOST
             if grep -q "^GEONODE_HOST=" "$app_env"; then
-                sed -i "s|^GEONODE_HOST=.*|GEONODE_HOST=$geonode_host|" "$app_env"
+                sed_inplace "s|^GEONODE_HOST=.*|GEONODE_HOST=$geonode_host|" "$app_env"
             else
                 echo "GEONODE_HOST=$geonode_host" >> "$app_env"
             fi
             
             # Update or add admin credentials
             if grep -q "^GEONODE_ADMIN_USERNAME=" "$app_env"; then
-                sed -i "s|^GEONODE_ADMIN_USERNAME=.*|GEONODE_ADMIN_USERNAME=$admin_username|" "$app_env"
+                sed_inplace "s|^GEONODE_ADMIN_USERNAME=.*|GEONODE_ADMIN_USERNAME=$admin_username|" "$app_env"
             else
                 echo "GEONODE_ADMIN_USERNAME=$admin_username" >> "$app_env"
             fi
             
             if grep -q "^GEONODE_ADMIN_PASSWORD=" "$app_env"; then
-                sed -i "s|^GEONODE_ADMIN_PASSWORD=.*|GEONODE_ADMIN_PASSWORD=$admin_password|" "$app_env"
+                sed_inplace "s|^GEONODE_ADMIN_PASSWORD=.*|GEONODE_ADMIN_PASSWORD=$admin_password|" "$app_env"
             else
                 echo "GEONODE_ADMIN_PASSWORD=$admin_password" >> "$app_env"
             fi
@@ -373,19 +429,19 @@ copy_geonode_settings() {
         # Update cdi/.env
         if [[ -f "$cdi_env" ]]; then
             if grep -q "^GEONODE_URL=" "$cdi_env"; then
-                sed -i "s|^GEONODE_URL=.*|GEONODE_URL=$siteurl|" "$cdi_env"
+                sed_inplace "s|^GEONODE_URL=.*|GEONODE_URL=$siteurl|" "$cdi_env"
             else
                 echo "GEONODE_URL=$siteurl" >> "$cdi_env"
             fi
             
             if grep -q "^GEONODE_USERNAME=" "$cdi_env"; then
-                sed -i "s|^GEONODE_USERNAME=.*|GEONODE_USERNAME=$admin_username|" "$cdi_env"
+                sed_inplace "s|^GEONODE_USERNAME=.*|GEONODE_USERNAME=$admin_username|" "$cdi_env"
             else
                 echo "GEONODE_USERNAME=$admin_username" >> "$cdi_env"
             fi
             
             if grep -q "^GEONODE_PASSWORD=" "$cdi_env"; then
-                sed -i "s|^GEONODE_PASSWORD=.*|GEONODE_PASSWORD=$admin_password|" "$cdi_env"
+                sed_inplace "s|^GEONODE_PASSWORD=.*|GEONODE_PASSWORD=$admin_password|" "$cdi_env"
             else
                 echo "GEONODE_PASSWORD=$admin_password" >> "$cdi_env"
             fi
@@ -600,6 +656,9 @@ else
     echo "========================================"
     echo "Mode: $MODE"
     echo "Service: $SERVICE"
+    if [[ "$MODE" == "prod" ]]; then
+        echo "Rundeck: $RUNDECK_MODE"
+    fi
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "Dry Run: ENABLED (no commands will be executed)"
     fi

@@ -22,6 +22,8 @@ services:
       - TRAEFIK_ACCESSLOG_FORMAT=common
       - TRAEFIK_API_DASHBOARD=true
       - TRAEFIK_API_INSECURE=true
+      # bundled: route /rundeck to the app's Rundeck container; external: no route
+      - RUNDECK_MODE=${RUNDECK_MODE:-bundled}
     ports:
       - "80:80"
       - "443:443"

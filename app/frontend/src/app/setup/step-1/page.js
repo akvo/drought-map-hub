@@ -25,16 +25,6 @@ import { THEME_PRESETS, DEFAULT_THEME } from "@/static/config";
 const { useForm } = Form;
 const { Title } = Typography;
 
-// DIH-9: optional modules the operator can toggle during setup.
-const MODULE_OPTIONS = [
-  {
-    label: "GeoNode — publish CDI layers to a GeoNode instance",
-    value: "geonode",
-  },
-  { label: "Weather stations", value: "weather" },
-  { label: "IKS (Indigenous Knowledge System)", value: "iks" },
-];
-
 const Step1Page = () => {
   const [loading, setLoading] = useState(false);
   const [preloading, setPreloading] = useState(true);
@@ -62,14 +52,10 @@ const Step1Page = () => {
       if (values.country) {
         formData.append("country", values.country);
       }
-      // DIH-9: brand theme (stored by name) + optional module flags
+      // DIH-9: brand theme (stored by name). Module flags are not set here:
+      // the single source is the backend env DIH_MODULES (DIH-2), surfaced
+      // read-only via appConfig.modules.
       formData.append("theme", values.theme || DEFAULT_THEME.name);
-      const checkedModules = values.modules || [];
-      const modulesObj = MODULE_OPTIONS.reduce((acc, { value }) => {
-        acc[value] = checkedModules.includes(value);
-        return acc;
-      }, {});
-      formData.append("modules", JSON.stringify(modulesObj));
       // DIH-6: the admin-unit noun (singular/plural) shown across the UI.
       formData.append(
         "admin_label",
@@ -156,6 +142,19 @@ const Step1Page = () => {
     }
   };
 
+  // DIH-9: antd Form.List renumbers positions on remove, but host_index holds
+  // a fixed position. Re-point it so the host doesn't silently shift to another
+  // org (or dangle) when the host or an earlier org is removed.
+  const handleRemoveOrganization = (remove, name) => {
+    const hostIndex = form.getFieldValue("host_index");
+    if (hostIndex === name) {
+      form.setFieldsValue({ host_index: 0 });
+    } else if (typeof hostIndex === "number" && hostIndex > name) {
+      form.setFieldsValue({ host_index: hostIndex - 1 });
+    }
+    remove(name);
+  };
+
   const onFirstLoad = useCallback(async () => {
     if (!preloading) {
       return;
@@ -175,9 +174,6 @@ const Step1Page = () => {
         admin_label_one: appStorage.admin_label?.one || "",
         admin_label_many: appStorage.admin_label?.many || "",
         theme: appStorage.theme || DEFAULT_THEME.name,
-        modules: appStorage.modules
-          ? Object.keys(appStorage.modules).filter((k) => appStorage.modules[k])
-          : ["geonode"],
         host_index: hostIndex >= 0 ? hostIndex : 0,
         // Note: File inputs cannot be set programmatically for security reasons
         organizations: appStorage.organizations?.map((org) => ({
@@ -316,7 +312,6 @@ const Step1Page = () => {
         initialValues={{
           organizations: [{}],
           theme: DEFAULT_THEME.name,
-          modules: ["geonode"],
           host_index: 0,
         }}
       >
@@ -391,13 +386,6 @@ const Step1Page = () => {
                 ))}
               </Space>
             </Radio.Group>
-          </Form.Item>
-          <Form.Item
-            label="Optional modules"
-            name="modules"
-            help="Enable only the features this deployment uses."
-          >
-            <Checkbox.Group options={MODULE_OPTIONS} />
           </Form.Item>
           <Form.Item
             label="Country Boundary (GeoJSON)"
@@ -541,7 +529,7 @@ const Step1Page = () => {
         <Form.Item
           name="host_index"
           className="w-full max-w-3xl"
-          help="Only one organization can be the host; its logo becomes the app brand/header logo."
+          help="Marks one organization as the host for this instance. (Host branding in the app header is applied in a later release.)"
         >
           <Radio.Group className="w-full">
             <Form.List name="organizations">
@@ -578,7 +566,9 @@ const Step1Page = () => {
                         </Form.Item>
                         <span>
                           <Button
-                            onClick={() => remove(name)}
+                            onClick={() =>
+                              handleRemoveOrganization(remove, name)
+                            }
                             type="dashed"
                             danger
                           >
