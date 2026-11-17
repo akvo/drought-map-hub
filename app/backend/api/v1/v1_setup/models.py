@@ -1,12 +1,6 @@
 from django.db import models
 
 
-def default_modules():
-    # DIH-9: per-client optional-module flags. GeoNode on by default so an
-    # unconfigured instance keeps today's behaviour.
-    return {"geonode": True, "weather": False, "iks": False}
-
-
 class SiteConfig(models.Model):
     uuid = models.CharField(max_length=36, unique=True)
     name = models.CharField(max_length=155)
@@ -15,7 +9,6 @@ class SiteConfig(models.Model):
     map_center = models.JSONField(blank=True, null=True)
     map_name_key = models.CharField(max_length=55, blank=True, null=True)
     theme = models.CharField(max_length=50, default="Ocean Blue")
-    modules = models.JSONField(default=default_modules)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
