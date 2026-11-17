@@ -11,6 +11,7 @@ import { PUBLICATION_STATUS } from "@/static/config";
 import classNames from "classnames";
 import Link from "next/link";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 
 const TinyEditor = dynamic(() => import("@/components/TinyEditor"), {
   ssr: false,
@@ -33,6 +34,7 @@ const PublishPage = ({ params }) => {
   });
   const [activeModal, setActiveModal] = useState(null);
   const { refreshMap } = useAppContext();
+  const adminLabel = useAdminLabel();
   const appDispatch = useAppDispatch();
 
   const [form] = useForm();
@@ -154,7 +156,7 @@ const PublishPage = ({ params }) => {
           <Link href={`/publications/${params?.id}`}>
             <Title
               level={2}
-            >{`Inkundla CDI Publication for: ${yearMonth}`}</Title>
+            >{`${adminLabel.one} CDI Publication for: ${yearMonth}`}</Title>
           </Link>
         </div>
         <div className="w-fit">

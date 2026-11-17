@@ -11,23 +11,36 @@ export default async function middleware(request) {
   const pathName = request.nextUrl.pathname;
   const response = NextResponse.next();
 
+  // After setup (re)configuration the httpOnly appConfig cookie would otherwise
+  // keep stale values (admin_label, modules, theme) for up to a day. Drop it on
+  // any /setup route so the next navigation refetches fresh config.
+  if (pathName.startsWith("/setup")) {
+    response.cookies.delete("appConfig");
+    return response;
+  }
+
   // check if app is cofigured
   const appConfig = request.cookies.get("appConfig")?.value;
-  // Refresh a stale cookie that predates the `modules` flags, otherwise
-  // useModule reads undefined and falls back to "all on". (The cookie is
-  // still set-once per its 1-day expiry for ordinary value changes.)
+  // Refresh a stale cookie that predates the `modules` or `admin_label`
+  // fields, otherwise useModule/useAdminLabel read undefined and fall back to
+  // defaults. (The cookie is still set-once per its 1-day expiry for ordinary
+  // value changes.)
   let needsConfig = !appConfig;
   if (appConfig) {
     try {
-      needsConfig = !JSON.parse(appConfig)?.modules;
+      const parsed = JSON.parse(appConfig);
+      needsConfig = !parsed?.modules || !parsed?.admin_label;
     } catch {
       needsConfig = true;
     }
   }
-  if (
-    needsConfig &&
-    [...publicRoutes, ...protectedRoutes, ...authRoutes].includes(pathName)
-  ) {
+  const knownRoutes = [...publicRoutes, ...protectedRoutes, ...authRoutes];
+  // Prefix match so dynamic detail pages (e.g. /reviews/4) also refresh a
+  // stale cookie, not just the exact list entries.
+  const isKnownRoute = knownRoutes.some(
+    (r) => pathName === r || (r !== "/" && pathName.startsWith(`${r}/`)),
+  );
+  if (needsConfig && isKnownRoute) {
     /// check if app is configured from the API
     const reqConfig = await fetch(
       `${process.env.WEBDOMAIN}/api/v1/setup/?format=json`,

@@ -1,6 +1,13 @@
 from django.db import models
 
 
+def default_admin_label():
+    # DIH-6: the admin-unit noun (singular/plural) comes from config, not
+    # hardcoded UI strings. Eswatini default; another country overrides it
+    # (e.g. {"one": "District", "many": "Districts"}).
+    return {"one": "Inkhundla", "many": "Tinkhundla"}
+
+
 class SiteConfig(models.Model):
     uuid = models.CharField(max_length=36, unique=True)
     name = models.CharField(max_length=155)
@@ -9,6 +16,7 @@ class SiteConfig(models.Model):
     map_center = models.JSONField(blank=True, null=True)
     map_name_key = models.CharField(max_length=55, blank=True, null=True)
     theme = models.CharField(max_length=50, default="Ocean Blue")
+    admin_label = models.JSONField(default=default_admin_label)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

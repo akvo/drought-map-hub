@@ -1,5 +1,5 @@
 import { ReviewedModal, ReviewList } from "@/components";
-import { api } from "@/lib";
+import { api, getAppConfig } from "@/lib";
 import { Flex } from "antd";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -20,13 +20,15 @@ const PublicationReviewPage = async ({ params }) => {
   const yearMonth = dayjs(review?.publication?.year_month, "YYYY-MM").format(
     "MMMM YYYY",
   );
+  const appConfig = await getAppConfig();
+  const adminLabel = appConfig?.admin_label?.one || "Inkhundla";
   return (
     <div className="w-full min-h-screen">
       <Flex align="center" justify="space-between" gap={4}>
         <div className="py-4">
           <Link href={`/publications/${review?.publication?.id}`}>
             <h1 className="text-3xl font-bold">
-              {`Inkundla CDI Review for: ${yearMonth}`}
+              {`${adminLabel} CDI Review for: ${yearMonth}`}
             </h1>
           </Link>
           <h2>
