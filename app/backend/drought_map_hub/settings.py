@@ -244,13 +244,15 @@ X_API_KEY_HEADER = environ.get("X_API_KEY_HEADER", "HTTP_X_API_KEY")
 
 # Durable storage root (DIH-1 1b): the hub's own writable files — org logos,
 # map-download exports, job tmp — live here so a clean redeploy keeps them.
-# Mounted as a volume shared by backend + worker; default resolves to
-# /app/storage in the container.
-STORAGE_PATH = environ.get("STORAGE_PATH", "./storage")
+# This is the IN-CONTAINER mount target; compose mounts the host-side
+# STORAGE_PATH volume onto it (${STORAGE_PATH:-./storage} -> /app/storage).
+# Django must always write here, never to the host STORAGE_PATH — set the
+# host var to an absolute disk and the two diverge. Override off-container.
+STORAGE_ROOT = environ.get("STORAGE_ROOT", "/app/storage")
 
 # Image upload settings
 MEDIA_URL = "/media/"
-MEDIA_ROOT = Path.joinpath(Path(STORAGE_PATH), "media")
+MEDIA_ROOT = Path.joinpath(Path(STORAGE_ROOT), "media")
 # Custom settings for organization logo
 ORGANIZATION_LOGO_UPLOAD_PATH = "organization_logos/"
 ORGANIZATION_LOGO_MAX_SIZE = 2 * 1024 * 1024  # 2MB

@@ -89,13 +89,15 @@ class GeonodePushAPITest(APITestCase):
 
 class GeonodeModuleOffTest(APITestCase):
     def test_push_404_when_module_disabled(self):
-        with override_settings(DIH_MODULES=[]):
-            reload_urlconf()
-            try:
+        try:
+            with override_settings(DIH_MODULES=[]):
+                reload_urlconf()
                 res = self.client.post(
                     "/api/v1/geonode/publications", {}, format="json"
                 )
                 self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
-            finally:
-                pass
-        reload_urlconf()
+        finally:
+            # Rebuild the urlconf with DIH_MODULES restored (outside the
+            # override), even if the assert fails — otherwise every later
+            # geonode test inherits the module-off urlconf and 404s.
+            reload_urlconf()

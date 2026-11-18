@@ -7,13 +7,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("v1_setup", "0002_organization_is_host_siteconfig_modules_and_more"),
+        ("v1_setup", "0002_organization_is_host_siteconfig_theme"),
     ]
 
     operations = [
         migrations.AddField(
             model_name="siteconfig",
             name="admin_label",
-            field=models.JSONField(default=api.v1.v1_setup.models.default_admin_label),
+            field=models.JSONField(
+                default=api.v1.v1_setup.models.default_admin_label
+            ),
         ),
     ]

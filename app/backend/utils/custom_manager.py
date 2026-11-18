@@ -1,4 +1,6 @@
 from django.contrib.auth.base_user import BaseUserManager
+from django.db.models import CharField, Value
+from django.db.models.functions import Cast, Concat
 from utils.soft_deletes_model import SoftDeletesManager, SoftDeletesQuerySet
 from uuid import uuid4
 from api.v1.v1_users.constants import UserRoleTypes
@@ -11,24 +13,31 @@ class UserManager(BaseUserManager, SoftDeletesManager):
         """
         Creates and saves a User with the given email and password.
 
-        If a soft-deleted account already uses this email, restore and
-        overwrite it instead of failing on the unique-email constraint.
-        (Active duplicates are rejected earlier by serializer validation.)
+        If a soft-deleted account already uses this email, rename that stale
+        row's email to free it, then create a fresh account. Reviving the old
+        row would carry over every field not in ``extra_fields``
+        (``is_superuser``, ``email_verified``, groups/permissions); deleting
+        it would cascade to that user's reviews.
+        (Active duplicates are rejected earlier by serializer validation;
+        ``reset_setup --with-users`` covers the dev re-run case.)
         """
         if not email:
             raise ValueError("The given email must be set")
-        user = (
+        (
             SoftDeletesQuerySet(self.model)
             .only_deleted()
             .filter(email=email)
-            .first()
+            .update(
+                email=Concat(
+                    Value("deleted-"),
+                    Cast("id", CharField()),
+                    Value("-"),
+                    "email",
+                    output_field=CharField(),
+                )
+            )
         )
-        if user is not None:
-            user.deleted_at = None
-            for field, value in extra_fields.items():
-                setattr(user, field, value)
-        else:
-            user = self.model(email=email, **extra_fields)
+        user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.email_verification_code = uuid4()
         user.save(using=self._db)

@@ -1,6 +1,7 @@
 from django.test import TestCase
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_users.constants import UserRoleTypes
+from utils.soft_deletes_model import SoftDeletesQuerySet
 
 
 class UserModelTestCase(TestCase):
@@ -51,20 +52,45 @@ class UserModelTestCase(TestCase):
         ).count()
         self.assertEqual(total_admin, 1)
 
-    def test_create_user_restores_soft_deleted_email(self):
-        # Re-registering a soft-deleted email restores that row instead of
-        # hitting the unique-email constraint.
-        original_id = self.user.id
+    def test_create_user_replaces_soft_deleted_email(self):
+        # Re-registering a soft-deleted email frees it on the stale row and
+        # creates a fresh account instead of hitting the unique-email
+        # constraint.
         self.user.soft_delete()
-        restored = SystemUser.objects._create_user(
-            email="test@test.org", password="New1234", name="restored"
+        recreated = SystemUser.objects._create_user(
+            email="test@test.org", password="New1234", name="recreated"
         )
-        self.assertEqual(restored.id, original_id)
-        self.assertIsNone(restored.deleted_at)
-        self.assertEqual(restored.name, "restored")
+        self.assertIsNone(recreated.deleted_at)
+        self.assertEqual(recreated.name, "recreated")
         self.assertEqual(
             SystemUser.objects.filter(email="test@test.org").count(), 1
         )
+
+    def test_recreated_user_drops_stale_admin_rights(self):
+        # A soft-deleted admin's email, re-registered as a plain reviewer,
+        # must not inherit is_superuser / email_verified from the old row.
+        admin = SystemUser.objects.create_superuser(
+            email="stale@test.org", password="Admin1234", name="stale admin"
+        )
+        admin.email_verified = True
+        admin.save()
+        admin_id = admin.id
+        admin.soft_delete()
+        recreated = SystemUser.objects._create_user(
+            email="stale@test.org",
+            password="New1234",
+            name="fresh",
+            role=UserRoleTypes.reviewer,
+        )
+        self.assertNotEqual(recreated.id, admin_id)
+        self.assertFalse(recreated.is_superuser)
+        self.assertFalse(recreated.email_verified)
+        self.assertEqual(recreated.role, UserRoleTypes.reviewer)
+        # The stale row is kept (so its reviews are not cascade-deleted),
+        # with its email freed.
+        stale = SoftDeletesQuerySet(SystemUser).get(id=admin_id)
+        self.assertEqual(stale.email, f"deleted-{admin_id}-stale@test.org")
+        self.assertIsNotNone(stale.deleted_at)
 
     def test_create_admin_without_is_superuser(self):
         with self.assertRaises(ValueError) as context:

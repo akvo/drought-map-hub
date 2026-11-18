@@ -115,3 +115,26 @@ class CreateFromRasterValuesTest(APITestCase):
             ).count(),
             0,
         )
+
+    @patch("django.utils.timezone.now")
+    def test_create_rejects_empty_values_without_download(self, mock_now):
+        mock_now.return_value = timezone.datetime(2025, 1, 31)
+        # raster with no pushed values, and the request gives no download_url:
+        # nothing to review -> must 400, not publish an empty map + email.
+        Raster.objects.create(
+            geonode_id=8, category="cdi-raster-map",
+            title="CDI 2025-01", year_month="2025-01-01",
+        )
+        url = reverse("publication-list", kwargs={"version": "v1"})
+        res = self.client.post(url, {
+            "cdi_geonode_id": 8,
+            "year_month": "2025-01-01",
+            "initial_values": [],
+            "due_date": "2025-02-28",
+            "reviewers": [r.id for r in self.reviewers],
+            "subject": "review",
+            "message": "{{reviewer_name}} {{year_month}} {{due_date}}",
+        }, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Publication.objects.count(), 0)

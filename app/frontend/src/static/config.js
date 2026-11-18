@@ -182,6 +182,10 @@ export const MAP_CATEGORY_OPTIONS = [
     value: "esi-raster-map",
     label: "ESI Raster Map",
   },
+  {
+    value: "sm-raster-map",
+    label: "SM Raster Map",
+  },
 ];
 
 export const EXPORT_FORMAT_OPTIONS = [

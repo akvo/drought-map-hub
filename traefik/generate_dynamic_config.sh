@@ -8,6 +8,37 @@ WEBDOMAIN=${WEBDOMAIN#http://}
 WEBDOMAIN_GEONODE=${WEBDOMAIN_GEONODE#https://}
 WEBDOMAIN_GEONODE=${WEBDOMAIN_GEONODE#http://}
 
+# Only route /rundeck when the app runs its own (bundled) Rundeck container.
+# With RUNDECK_MODE=external the existing instance is reached on its own domain.
+RUNDECK_ROUTERS=""
+RUNDECK_SERVICE=""
+if [ "${RUNDECK_MODE:-bundled}" = "bundled" ]; then
+RUNDECK_ROUTERS=$(cat << EOF
+    rundeck-service-router-80:
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/rundeck\`)"
+      service: rundeck-service
+      entrypoints: web
+      middlewares:
+        - redirect-to-https
+
+    rundeck-service-router-443:
+      entrypoints:
+        - websecure
+      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/rundeck\`)"
+      service: rundeck-service
+      tls:
+        certResolver: myresolver
+EOF
+)
+RUNDECK_SERVICE=$(cat << EOF
+    rundeck-service:
+      loadBalancer:
+        servers:
+          - url: "http://rundeck:4440"
+EOF
+)
+fi
+
 cat << EOF > /traefik-config/dynamic.yml
 http:
   routers:
@@ -88,20 +119,7 @@ http:
       middlewares:
        - config-rewrite
 
-    rundeck-service-router-80:
-      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/rundeck\`)"
-      service: rundeck-service
-      entrypoints: web
-      middlewares:
-        - redirect-to-https
-
-    rundeck-service-router-443:
-      entrypoints:
-        - websecure
-      rule: "Host(\`${WEBDOMAIN}\`) && PathPrefix(\`/rundeck\`)"
-      service: rundeck-service
-      tls:
-        certResolver: myresolver
+${RUNDECK_ROUTERS}
 
     geonode-service-router-80:
       rule: "Host(\`${WEBDOMAIN_GEONODE}\`)"
@@ -154,10 +172,7 @@ http:
         servers:
           - url: "http://app-backend-1:8000"
 
-    rundeck-service:
-      loadBalancer:
-        servers:
-          - url: "http://rundeck:4440"
+${RUNDECK_SERVICE}
 
     geonode-service:
       loadBalancer:
