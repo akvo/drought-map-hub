@@ -102,8 +102,15 @@ const appReducer = (state, action) => {
   }
 };
 
-const AppContextProvider = ({ children }) => {
-  const [value, dispatch] = useReducer(appReducer, initialValues);
+const AppContextProvider = ({ children, appConfig }) => {
+  // Seed the client context with the server-read appConfig (name, theme,
+  // modules, ...) so hooks like useModule work on every page from first
+  // render. Without this, appConfig.modules is undefined off the setup flow
+  // and useModule falls back to "all on".
+  const [value, dispatch] = useReducer(appReducer, {
+    ...initialValues,
+    appConfig: { ...initialValues.appConfig, ...(appConfig || {}) },
+  });
 
   return (
     <AppContext.Provider value={value}>

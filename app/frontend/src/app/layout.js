@@ -42,7 +42,7 @@ export default async function RootLayout({ children }) {
           robotoMono.variable,
         )}
       >
-        <AppContextProvider>
+        <AppContextProvider appConfig={appConfig}>
           <AntdRegistry>
             <ConfigProvider
               theme={{

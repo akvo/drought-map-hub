@@ -33,6 +33,7 @@ services:
     command: ["./start.sh"]
     volumes:
       - ./backend:/app:delegated
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     environment:
       - DB_SCHEMA=$DB_SCHEMA
       - DB_USER=$DB_USER
@@ -56,6 +57,7 @@ services:
       - WEBDOMAIN=$WEBDOMAIN
       - CSRF_TRUSTED_ORIGINS=$CSRF_TRUSTED_ORIGINS
       - SETUP_SECRET_KEY=$SETUP_SECRET_KEY
+      - X_API_KEY=$X_API_KEY
     ports:
       - "8000:8000"
     depends_on:
@@ -86,6 +88,8 @@ services:
     env_file: "./.env"
     restart: unless-stopped
     working_dir: /app
+    volumes:
+      - ${STORAGE_PATH:-./storage}:/app/storage:delegated
     depends_on:
       db:
         condition: service_healthy

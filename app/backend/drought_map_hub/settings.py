@@ -50,6 +50,7 @@ API_APPS = [
     "api.v1.v1_publication",
     "api.v1.v1_rundeck",
     "api.v1.v1_setup",
+    "api.v1.v1_geonode",
 ]
 
 # Add third party apps below
@@ -234,10 +235,21 @@ DIH_MODULES = (
     else [m.strip() for m in _dih_modules_raw.split(",") if m.strip()]
 )
 
+# Shared secret for the CDI pipeline push endpoints (DIH-1 v1_geonode).
+# Per-tenant keys arrive with MT-8. Unset -> HasApiKey rejects all.
+X_API_KEY = environ.get("X_API_KEY", "")
+X_API_KEY_HEADER = environ.get("X_API_KEY_HEADER", "HTTP_X_API_KEY")
+
+
+# Durable storage root (DIH-1 1b): the hub's own writable files — org logos,
+# map-download exports, job tmp — live here so a clean redeploy keeps them.
+# Mounted as a volume shared by backend + worker; default resolves to
+# /app/storage in the container.
+STORAGE_PATH = environ.get("STORAGE_PATH", "./storage")
 
 # Image upload settings
 MEDIA_URL = "/media/"
-MEDIA_ROOT = Path.joinpath(BASE_DIR, "media")
+MEDIA_ROOT = Path.joinpath(Path(STORAGE_PATH), "media")
 # Custom settings for organization logo
 ORGANIZATION_LOGO_UPLOAD_PATH = "organization_logos/"
 ORGANIZATION_LOGO_MAX_SIZE = 2 * 1024 * 1024  # 2MB

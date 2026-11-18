@@ -81,6 +81,15 @@ The Drought-map Hub's high-level architecture integrates several components, ext
 
 The CDI automation script (`job.sh`) is designed to run periodically (ideally monthly) to keep drought-related data up-to-date. This automated process, orchestrated by Rundeck, involves several key steps:
 
+> **Run it inside the `cdi` container.** The scientific Python deps (`rasterio`, `netCDF4`, …) are installed only in the `cdi` image, not on the VM host. Make the Rundeck job step exec into the container rather than calling `job.sh` on the host (running it on the host fails with `ModuleNotFoundError: No module named 'rasterio'`). First bring the container up on the VM (`cd cdi && docker compose up -d`), then:
+>
+> ```bash
+> docker exec cdi bash /app/src/background-jobs/job.sh all      # full history
+> docker exec cdi bash /app/src/background-jobs/job.sh recent   # last 2 years
+> ```
+>
+> The remote user Rundeck SSHes in as must be in the `docker` group. To run a step on the host instead, set `PYTHON_VENV=/path/to/venv` (a venv with `cdi/src/cdi-scripts/requirements.txt` installed) in `cdi/.env`.
+
 1.  **Check External Datasets**: The system verifies the availability of the latest datasets from global sources, including CHIRPS/Precipitation, LST, NDVI, and Soil Moisture. Some datasets require **NASA Earthdata login credentials**.
 2.  **Check Data is Up-to-Date**: It compares the number of available external dataset entries with the number of downloaded input data. If discrepancies are found, missing data is identified and downloaded.
 3.  **Run NDMC Scripts (CDI Scripts)**: Once all necessary datasets for the previous month are updated, the CDI script is executed to produce the CDI Map output, typically as GeoTIFF raster files.
@@ -162,6 +171,7 @@ After the initial script execution, some manual configurations are required:
      *   "Permission denied" when using key auth: verify the private key is correct and has the right permissions; try connecting from the Rundeck host via SSH.
      *   "Connection timed out": confirm Rundeck server can reach the VM hostname/IP on port 22 and no firewall blocks the traffic.
      *   If jobs run but scripts fail on the VM: inspect the remote user's environment (PATH, Python, virtualenv). Rundeck runs non-interactive shells.
+     *   `ModuleNotFoundError: No module named 'rasterio'` (or another geo dep): the step ran `job.sh` on the host instead of inside the `cdi` container. Exec into the container (see §4) or set `PYTHON_VENV` in `cdi/.env`.
 
      Quick verification commands (run from Rundeck host or locally to confirm reachability)
      ```bash
