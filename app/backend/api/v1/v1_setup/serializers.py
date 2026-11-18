@@ -24,6 +24,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'logo',
             'is_twg',
             'is_collaborator',
+            'is_host',
             'created_at',
             'updated_at'
         ]
@@ -44,6 +45,7 @@ class SetupSerializer(serializers.ModelSerializer):
             'geojson_file',
             'map_center',
             'map_name_key',
+            'theme',
             'organizations',
             'created_at',
             'updated_at'
@@ -95,6 +97,7 @@ class SetupSerializer(serializers.ModelSerializer):
                     is_twg_val = data.get(is_twg_key)
                     is_collab_val = data.get(is_collab_key)
 
+                    is_host_val = data.get(f'organizations[{i}][is_host]')
                     org_data = {
                         'name': name_val,
                         'website': website_val,
@@ -102,6 +105,7 @@ class SetupSerializer(serializers.ModelSerializer):
                         'is_collaborator': is_collab_val in [
                             'true', 'True', '1', True
                         ],
+                        'is_host': is_host_val in ['true', 'True', '1', True],
                     }
                     if logo_key in data:
                         org_data['logo'] = data[logo_key]
@@ -197,6 +201,22 @@ class SetupSerializer(serializers.ModelSerializer):
 class SetupResponseSerializer(serializers.ModelSerializer):
     organizations = OrganizationSerializer(many=True, read_only=True)
     is_configured = serializers.SerializerMethodField()
+    modules = serializers.SerializerMethodField()
+
+    @extend_schema_field(OpenApiTypes.OBJECT)
+    def get_modules(self, obj):
+        """Optional-module flags from env ``DIH_MODULES`` (DIH-2).
+
+        Env is the single source of truth; this mirrors the backend gate
+        ``utils.modules.module_enabled`` for the client ``useModule`` hook.
+        ``None`` (var unset) -> every module on. A configured list becomes
+        ``{name: True}`` for the enabled names (absent name = off), matching
+        ``module_enabled``'s ``name in modules`` semantics.
+        """
+        enabled = getattr(settings, "DIH_MODULES", None)
+        if enabled is None:
+            return None
+        return {name: True for name in enabled}
 
     @extend_schema_field(OpenApiTypes.BOOL)
     def get_is_configured(self, obj):
@@ -218,6 +238,8 @@ class SetupResponseSerializer(serializers.ModelSerializer):
             'country',
             'geojson_file',
             'map_center',
+            'theme',
+            'modules',
             'created_at',
             'updated_at',
             'is_configured',

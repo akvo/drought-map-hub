@@ -16,7 +16,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
           href="/"
         >
           <button
-            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+            class="px-6 py-3 transition-colors duration-300 text-primary-foreground hover:bg-primary-active"
           >
             Home
           </button>
@@ -26,7 +26,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
           href="/browse"
         >
           <button
-            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+            class="px-6 py-3 transition-colors duration-300 text-primary-foreground hover:bg-primary-active"
           >
             Browse
           </button>
@@ -36,7 +36,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
           href="/compare"
         >
           <button
-            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+            class="px-6 py-3 transition-colors duration-300 text-primary-foreground hover:bg-primary-active"
           >
             Compare
           </button>
@@ -46,7 +46,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
           href="/about"
         >
           <button
-            class="text-white px-6 py-3 transition-colors duration-300 hover:bg-rose-800"
+            class="px-6 py-3 transition-colors duration-300 text-primary-foreground hover:bg-primary-active"
           >
             About
           </button>
@@ -57,7 +57,7 @@ exports[`HomePage renders correctly & match with the snapshot 1`] = `
       >
         <a
           aria-label="Profile"
-          class="ant-dropdown-trigger text-white"
+          class="ant-dropdown-trigger text-primary-foreground"
           role="button"
         >
           <svg
