@@ -25,7 +25,7 @@ const DashboardLayout = ({ user, children }) => {
               href={
                 user?.role === USER_ROLES.admin ? "/publications" : "/reviews"
               }
-              className="text-white"
+              className="text-primary-foreground"
             >
               Dashboard
             </Link>
@@ -41,7 +41,7 @@ const DashboardLayout = ({ user, children }) => {
             >
               <a
                 role="button"
-                className="text-white"
+                className="text-primary-foreground"
                 onClick={(e) => e.preventDefault()}
               >
                 <UserCircle size={32} />
