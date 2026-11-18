@@ -1,6 +1,7 @@
 from django.test import TestCase
 from api.v1.v1_users.models import SystemUser
 from api.v1.v1_users.constants import UserRoleTypes
+from utils.soft_deletes_model import SoftDeletesQuerySet
 
 
 class UserModelTestCase(TestCase):
@@ -52,8 +53,9 @@ class UserModelTestCase(TestCase):
         self.assertEqual(total_admin, 1)
 
     def test_create_user_replaces_soft_deleted_email(self):
-        # Re-registering a soft-deleted email drops the stale row and creates
-        # a fresh account instead of hitting the unique-email constraint.
+        # Re-registering a soft-deleted email frees it on the stale row and
+        # creates a fresh account instead of hitting the unique-email
+        # constraint.
         self.user.soft_delete()
         recreated = SystemUser.objects._create_user(
             email="test@test.org", password="New1234", name="recreated"
@@ -84,6 +86,11 @@ class UserModelTestCase(TestCase):
         self.assertFalse(recreated.is_superuser)
         self.assertFalse(recreated.email_verified)
         self.assertEqual(recreated.role, UserRoleTypes.reviewer)
+        # The stale row is kept (so its reviews are not cascade-deleted),
+        # with its email freed.
+        stale = SoftDeletesQuerySet(SystemUser).get(id=admin_id)
+        self.assertEqual(stale.email, f"deleted-{admin_id}-stale@test.org")
+        self.assertIsNotNone(stale.deleted_at)
 
     def test_create_admin_without_is_superuser(self):
         with self.assertRaises(ValueError) as context:
