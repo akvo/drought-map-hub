@@ -33,7 +33,9 @@ Country files are resolved from the **tenant's pack directory**, not a global pa
 | `zones.topojson` | `eswatini-ecological_regions*.topojson` | renamed, optional (no zones → zone filter hidden) |
 | `regions.topojson` | `eswatini-region.topojson` | renamed |
 | `climatic-zones.json`, `activity_library.csv`, `priority_areas.csv`, `iks_kobo_catalogue.csv`, `30years/` | as is | as is (already data) |
-| `country.json` | — | **new**: name, `admin_label`, zones `[{value,label,code}]`, region colours, TWG agencies + logos, brief contacts, `datasets` |
+| `country.json` | — | **new**: name, ~~`admin_label`~~, zones `[{value,label,code}]`, region colours, TWG agencies + logos, brief contacts, `datasets` |
+
+> **Note (#24):** `admin_label` was split out of `country.json` and now lives in **`SiteConfig.admin_label`**, set in the setup wizard (DIH-6 / DIH-9). `country.json` keeps the rest (zones, region colours, agencies, contacts, `datasets`).
 
 - All country files read via `tenant_source_dir(request.tenant)` — none of the 9 hard-coded paths remain.
 - **Model**: `Administration.zone` drops `choices=AdministrationZones.choices()` → plain `CharField(max_length=50)`; the `AdministrationZones` enum is replaced by `country_zones()` reading `country.json`. Migration = `AlterField` removing choices only (no data change; Eswatini slugs stay valid). Reversible.

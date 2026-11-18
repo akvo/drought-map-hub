@@ -56,6 +56,14 @@ const Step1Page = () => {
       // the single source is the backend env DIH_MODULES (DIH-2), surfaced
       // read-only via appConfig.modules.
       formData.append("theme", values.theme || DEFAULT_THEME.name);
+      // DIH-6: the admin-unit noun (singular/plural) shown across the UI.
+      formData.append(
+        "admin_label",
+        JSON.stringify({
+          one: values.admin_label_one,
+          many: values.admin_label_many,
+        }),
+      );
       // Handle file upload for geojson_file
       if (values.geojson_file && values.geojson_file?.[0]) {
         const file = values.geojson_file[0];
@@ -163,6 +171,8 @@ const Step1Page = () => {
         appStorage.organizations?.findIndex((o) => o.is_host) ?? -1;
       form.setFieldsValue({
         name: appStorage.name || "",
+        admin_label_one: appStorage.admin_label?.one || "",
+        admin_label_many: appStorage.admin_label?.many || "",
         theme: appStorage.theme || DEFAULT_THEME.name,
         host_index: hostIndex >= 0 ? hostIndex : 0,
         // Note: File inputs cannot be set programmatically for security reasons
@@ -331,6 +341,26 @@ const Step1Page = () => {
                 </Select.Option>
               ))}
             </Select>
+          </Form.Item>
+          <Form.Item
+            label="Administrative unit label (singular)"
+            name="admin_label_one"
+            help="The word for one administrative area, e.g. Inkhundla, District, Woreda."
+            rules={[
+              { required: true, message: "Please input the singular label" },
+            ]}
+          >
+            <Input placeholder="e.g. District" />
+          </Form.Item>
+          <Form.Item
+            label="Administrative unit label (plural)"
+            name="admin_label_many"
+            help="The plural form shown in lists and summaries, e.g. Tinkhundla, Districts."
+            rules={[
+              { required: true, message: "Please input the plural label" },
+            ]}
+          >
+            <Input placeholder="e.g. Districts" />
           </Form.Item>
           <Form.Item
             label="Brand theme"

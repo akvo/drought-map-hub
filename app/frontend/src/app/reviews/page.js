@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 import { Table, Tag, Typography } from "antd";
 import { Can } from "@/components";
 import { api } from "@/lib";
@@ -20,6 +21,7 @@ const ReviewsPage = () => {
   const [page, setPage] = useState(1);
   const [preload, setPreload] = useState(true);
   const router = useRouter();
+  const adminLabel = useAdminLabel();
 
   const columns = [
     {
@@ -37,7 +39,7 @@ const ReviewsPage = () => {
       render: (value) => dayjs(value, "YYYY-MM").format("MMMM YYYY"),
     },
     {
-      title: "TINKHUNDLA",
+      title: adminLabel.many.toUpperCase(),
       dataIndex: "progress_review",
       key: "progress_review",
     },

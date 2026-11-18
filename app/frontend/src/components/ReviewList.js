@@ -22,6 +22,7 @@ import {
 import classNames from "classnames";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 
 const { Search } = Input;
 const { useForm } = Form;
@@ -51,6 +52,7 @@ const ReviewList = ({
   remaining = 0,
 }) => {
   const { administrations, refreshMap } = useAppContext();
+  const adminLabel = useAdminLabel();
   const [form] = useForm();
   const [marking, setMarking] = useState(false);
   const [checkAll, setCheckAll] = useState(false);
@@ -211,7 +213,7 @@ const ReviewList = ({
             <>
               <div className="p-4 sticky top-0 left-0 border-b border-neutral-200 bg-neutral-100 space-y-4 z-10">
                 <Search
-                  placeholder="Search Inkhundla"
+                  placeholder={`Search ${adminLabel.one}`}
                   onSearch={setSearch}
                   onClear={() => setSearch(null)}
                   allowClear

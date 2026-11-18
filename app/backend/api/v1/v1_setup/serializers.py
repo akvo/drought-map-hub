@@ -1,5 +1,6 @@
 import os
 import ast
+import json
 from django.conf import settings
 from django.core.management import call_command
 from django.utils.crypto import get_random_string
@@ -46,6 +47,7 @@ class SetupSerializer(serializers.ModelSerializer):
             'map_center',
             'map_name_key',
             'theme',
+            'admin_label',
             'organizations',
             'created_at',
             'updated_at'
@@ -117,6 +119,14 @@ class SetupSerializer(serializers.ModelSerializer):
                 # Create a mutable copy of data
                 data_dict = dict(data.items())
                 data_dict['organizations'] = organizations_data
+                # admin_label arrives as a JSON string over multipart.
+                if isinstance(data_dict.get('admin_label'), str):
+                    try:
+                        data_dict['admin_label'] = json.loads(
+                            data_dict['admin_label']
+                        )
+                    except (ValueError, TypeError):
+                        pass
                 return super().to_internal_value(data_dict)
         return super().to_internal_value(data)
 
@@ -240,6 +250,7 @@ class SetupResponseSerializer(serializers.ModelSerializer):
             'map_center',
             'theme',
             'modules',
+            'admin_label',
             'created_at',
             'updated_at',
             'is_configured',
