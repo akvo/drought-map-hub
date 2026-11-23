@@ -16,14 +16,17 @@ def reload_urlconf():
 
 class DatasetsModuleOffTest(APITestCase):
     def test_routes_404_when_module_disabled(self):
-        with override_settings(DIH_MODULES=[]):
-            reload_urlconf()
-            try:
+        try:
+            with override_settings(DIH_MODULES=[]):
+                reload_urlconf()
                 for url in (
                     "/api/v1/datasets/ndvi_anomaly",
                     "/api/v1/datasets/ndvi_anomaly/periods",
                 ):
                     res = self.client.get(url)
                     self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
-            finally:
-                reload_urlconf()
+        finally:
+            # Rebuild the urlconf with DIH_MODULES restored (outside the
+            # override), even if an assert fails — otherwise every later test
+            # of an optional module's routes inherits the all-off urlconf.
+            reload_urlconf()
