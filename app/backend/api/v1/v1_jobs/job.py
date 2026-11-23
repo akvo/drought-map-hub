@@ -25,7 +25,7 @@ from urllib.parse import urlparse, urlunparse
 
 # Set up logging
 logger = logging.getLogger(__name__)
-tmp_dir = os.path.join(settings.STORAGE_PATH, "tmp")
+tmp_dir = os.path.join(settings.STORAGE_ROOT, "tmp")
 
 
 def demo_q_func(name: str):
