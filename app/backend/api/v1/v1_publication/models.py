@@ -39,7 +39,22 @@ def validate_json_values(json_values: list = []):
 
 class Publication(SoftDeletes):
     year_month = models.DateField(null=False)
-    cdi_geonode_id = models.IntegerField(null=False, unique=True)
+    # The source raster asset this publication was created from. This is the
+    # real relation (not keyed on any GeoNode id): one Raster -> at most one
+    # Publication. raster.publication gives the reverse. Nullable so a fully
+    # manual publication can exist without an asset.
+    raster = models.OneToOneField(
+        "Raster",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="publication",
+    )
+    # Legacy loose reference to a GeoNode resource id. Kept during the
+    # Raster-asset migration (frontend/create-flow still pass it); the GeoNode
+    # ref now lives on Raster.geonode_id. Not used for the Publication relation.
+    # unique still holds for non-null ids (Postgres treats NULLs as distinct).
+    cdi_geonode_id = models.IntegerField(null=True, blank=True, unique=True)
     initial_values = models.JSONField(
         null=False,
         validators=[validate_json_values]
@@ -104,3 +119,46 @@ class Review(models.Model):
 
     class Meta:
         db_table = "reviews"
+
+
+class Raster(models.Model):
+    """A raster map output stored on the platform as a publication asset.
+
+    Holds the per-administration ``values`` reduced from the source raster, so
+    the publication workflow (listing, create, review) never has to reach an
+    external raster store. ``geonode_id`` is an optional reference to the
+    GeoNode resource that hosts the full raster; the optional ``v1_geonode``
+    module attaches live GeoNode pointers (detail/embed/download URLs) to this
+    asset via a FK. With no raster store at all the asset still stands on its
+    pushed ``values`` alone.
+    """
+
+    geonode_id = models.IntegerField(null=True, blank=True, unique=True)
+    category = models.CharField(max_length=50)
+    title = models.CharField(max_length=255)
+    # normalised to first-of-month by save() (readers look up by <YYYY-MM>-01)
+    year_month = models.DateField()
+    # per-administration reduced values, pushed by the pipeline
+    values = models.JSONField(
+        null=True, blank=True, validators=[validate_json_values]
+    )
+    # source raster `created` datetime (for display/sort)
+    resource_created = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    # auto-updated on every push/sync write
+    synced_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        year_month = self._meta.get_field("year_month").to_python(
+            self.year_month
+        )
+        if year_month and year_month.day != 1:
+            self.year_month = year_month.replace(day=1)
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Raster:{self.geonode_id} ({self.year_month})"
+
+    class Meta:
+        db_table = "rasters"
+        indexes = [models.Index(fields=["category", "year_month"])]
