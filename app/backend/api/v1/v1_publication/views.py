@@ -48,6 +48,7 @@ from api.v1.v1_publication.models import (
     Publication,
     Raster,
 )
+from api.v1.v1_geonode.models import GeoNodeResource
 from api.v1.v1_publication.constants import (
     PublicationStatus,
     DroughtCategory,
@@ -255,7 +256,17 @@ class PublicationViewSet(viewsets.ModelViewSet):
                     job.save()
                 else:
                     # geonode-less: trust the initial_values supplied in the
-                    # request (no raster to fetch), notify reviewers directly.
+                    # request (no raster to fetch). Reject an empty set — the
+                    # frontend always posts initial_values=[], so without this
+                    # an unvalued raster would publish an empty map and email
+                    # every reviewer about it.
+                    if not publication.initial_values:
+                        raise serializers.ValidationError({
+                            "initial_values": (
+                                "Required: the raster has no pushed values "
+                                "and no download_url was given."
+                            )
+                        })
                     from api.v1.v1_jobs.job import notify_reviewers
                     notify_reviewers(publication, subject, message)
 
@@ -778,14 +789,9 @@ class RasterListAPI(APIView):
         """
         if not raster_ids or not module_enabled("geonode"):
             return {}
-        from django.apps import apps
-        try:
-            model = apps.get_model("v1_geonode", "GeoNodeResource")
-        except LookupError:
-            return {}
         return {
             g.raster_id: g
-            for g in model.objects.filter(raster_id__in=raster_ids)
+            for g in GeoNodeResource.objects.filter(raster_id__in=raster_ids)
         }
 
     @extend_schema(
@@ -846,7 +852,9 @@ class RasterListAPI(APIView):
         page_size = 10
 
         rows = list(
-            Raster.objects.filter(category=category).order_by("-year_month")
+            Raster.objects.filter(category=category)
+            .defer("values")  # the picker shows metadata only
+            .order_by("-year_month")
         )
         pubs = {
             p.raster_id: p
