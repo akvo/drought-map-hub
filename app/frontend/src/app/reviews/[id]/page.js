@@ -1,5 +1,5 @@
 import { ReviewAdmModal, ReviewList, SubmitReviewButton } from "@/components";
-import { api } from "@/lib";
+import { api, getAppConfig } from "@/lib";
 import { Flex } from "antd";
 import dayjs from "dayjs";
 import dynamic from "next/dynamic";
@@ -19,6 +19,11 @@ const ReviewDetailsPage = async ({ params }) => {
   }
   const [reviewed, total] = review.progress_review?.split("/");
   const remaining = total - reviewed;
+  const appConfig = await getAppConfig();
+  const adminLabel = appConfig?.admin_label || {
+    one: "Inkhundla",
+    many: "Tinkhundla",
+  };
   const dataSource = review?.publication?.initial_values?.map(
     ({ category, ...v }) => {
       if (review?.suggestion_values?.length) {
@@ -48,7 +53,7 @@ const ReviewDetailsPage = async ({ params }) => {
     <div className="w-full min-h-screen">
       <Flex align="center" justify="space-between" gap={4}>
         <div className="leading-4 py-4">
-          <h1 className="text-3xl font-bold">{`Inkundla CDI Review for: ${dayjs(review?.publication?.year_month, "YYYY-MM").format("MMMM YYYY")}`}</h1>
+          <h1 className="text-3xl font-bold">{`${adminLabel.one} CDI Review for: ${dayjs(review?.publication?.year_month, "YYYY-MM").format("MMMM YYYY")}`}</h1>
           <h2 className="text-xl">{`Review Deadline: ${review?.publication?.due_date}`}</h2>
         </div>
         {!review?.is_completed && remaining === 0 && (
@@ -56,7 +61,7 @@ const ReviewDetailsPage = async ({ params }) => {
         )}
         {!review?.is_completed && remaining > 0 && (
           <div className="leading-2 p-4 text-center">
-            <strong>REMAINING TINKHUNDLA</strong>
+            <strong>REMAINING {adminLabel.many.toUpperCase()}</strong>
             <h2 className="text-2xl">{remaining}</h2>
           </div>
         )}

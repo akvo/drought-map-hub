@@ -2,6 +2,7 @@
 
 import { ValidationModal, ValidationTable } from "@/components";
 import { useAppContext, useAppDispatch } from "@/context/AppContextProvider";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 import { api, transformReviews } from "@/lib";
 import {
   DROUGHT_CATEGORY_LABEL,
@@ -34,6 +35,7 @@ const ValidationPage = ({ params }) => {
   const [activeModal, setActiveModal] = useState(null);
 
   const { administrations, refreshMap } = useAppContext();
+  const adminLabel = useAdminLabel();
   const appDispatch = useAppDispatch();
   const router = useRouter();
 
@@ -276,7 +278,7 @@ const ValidationPage = ({ params }) => {
           <Link href={`/publications/${params?.id}`}>
             <Title
               level={2}
-            >{`Inkundla CDI Validation for: ${yearMonth}`}</Title>
+            >{`${adminLabel.one} CDI Validation for: ${yearMonth}`}</Title>
           </Link>
         </div>
         <div>
@@ -292,7 +294,7 @@ const ValidationPage = ({ params }) => {
             </Button>
           ) : (
             <div className="leading-2 text-center">
-              <strong>REMAINING TINKHUNDLA</strong>
+              <strong>REMAINING {adminLabel.many.toUpperCase()}</strong>
               <h2 className="text-2xl">
                 {totalData ? totalData - totalValidated : "..."}
               </h2>

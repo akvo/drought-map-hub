@@ -21,6 +21,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib";
+import { useAdminLabel } from "@/lib/useAdminLabel";
 
 const { TextArea } = Input;
 const { useForm } = Form;
@@ -31,6 +32,7 @@ const ReviewAdmModal = ({ review }) => {
   const [comment, setComment] = useState("");
   const { activeAdm } = useAppContext();
   const appDispatch = useAppDispatch();
+  const adminLabel = useAdminLabel();
   const [form] = useForm();
   const router = useRouter();
 
@@ -122,7 +124,7 @@ const ReviewAdmModal = ({ review }) => {
   return (
     <Form form={form} onFinish={onFinish}>
       <Modal
-        title={"INKHUNDLA STATUS"}
+        title={`${adminLabel.one.toUpperCase()} STATUS`}
         open={isModalOpen}
         onCancel={onClose}
         maskClosable={false}
